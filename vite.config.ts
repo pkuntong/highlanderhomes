@@ -11,6 +11,9 @@ export default defineConfig({
     host: true,
     open: true,
     strictPort: true,
+    headers: {
+      "Content-Type": "application/javascript",
+    },
   },
   build: {
     outDir: "dist",
@@ -28,8 +31,20 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
   },
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom"],
+    esbuildOptions: {
+      loader: {
+        ".js": "jsx",
+        ".ts": "tsx",
+      },
+    },
+  },
+  esbuild: {
+    loader: "tsx",
+    include: /src\/.*\.tsx?$/,
+    exclude: [],
   },
 });
