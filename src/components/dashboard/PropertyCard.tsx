@@ -1,4 +1,3 @@
-
 import { Property } from "@/types";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +24,7 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
     <Card className="overflow-hidden">
       <div className="h-40 bg-gray-200">
         <img 
-          src={property.imageUrl} 
+          src={property.imageBase64 || property.imageUrl} 
           alt={property.address} 
           className="h-full w-full object-cover"
         />
@@ -45,10 +44,13 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
             <span className="font-medium">{property.bedrooms}</span> beds
           </div>
           <div>
-            <span className="font-medium">{property.bathrooms}</span> baths
+            <span className="font-medium">{property.fullBathrooms}</span> full baths
           </div>
           <div>
-            <span className="font-medium">{property.squareFootage.toLocaleString()}</span> sqft
+            <span className="font-medium">{property.halfBathrooms}</span> half baths
+          </div>
+          <div>
+            <span className="font-medium">{property.squareFootage?.toLocaleString?.() || ''}</span> sqft
           </div>
         </div>
       </CardContent>

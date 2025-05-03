@@ -52,6 +52,11 @@ const Dashboard = () => {
     0
   );
 
+  const totalFootage = properties.reduce(
+    (sum, property) => sum + (property.footage || 0),
+    0
+  );
+
   const activeMaintenanceCount = maintenanceLogs.filter(
     (log) => log.status !== "completed"
   ).length;
@@ -83,6 +88,11 @@ const Dashboard = () => {
           trendUp={revenueTrend > 0}
         />
         <StatCard
+          title="Total Footage"
+          value={`${totalFootage.toLocaleString()} sq ft`}
+          icon={<Building size={24} />}
+        />
+        <StatCard
           title="Active Maintenance"
           value={activeMaintenanceCount}
           icon={<Wrench size={24} />}
@@ -108,6 +118,13 @@ const Dashboard = () => {
           <MaintenanceStatus maintenanceLogs={recentMaintenanceLogs} />
         </div>
       </div>
+
+      {/* Company Contact Info Footer */}
+      <footer className="mt-10 text-center text-sm text-gray-500">
+        <div>Phone: 240-449-4338</div>
+        <div>Email: <a href="mailto:highlanderhomes22@gmail.com" className="underline">highlanderhomes22@gmail.com</a></div>
+        <div>Highlander Homes LLC. 2025</div>
+      </footer>
     </PageLayout>
   );
 };
