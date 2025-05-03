@@ -36,6 +36,7 @@ const Profile = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [passwordError, setPasswordError] = useState("");
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -62,17 +63,24 @@ const Profile = () => {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would validate and update the password
-    if (passwordForm.newPassword === passwordForm.confirmPassword) {
-      // Add your password change logic here
-      console.log("Changing password...");
-      setIsChangePasswordOpen(false);
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
+    setPasswordError("");
+    const storedPassword = localStorage.getItem("highlanderhomes_password") || "highlander2025";
+    if (passwordForm.currentPassword !== storedPassword) {
+      setPasswordError("Current password is incorrect.");
+      return;
     }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+    // Save new password to localStorage
+    localStorage.setItem("highlanderhomes_password", passwordForm.newPassword);
+    setIsChangePasswordOpen(false);
+    setPasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
   };
 
   return (
@@ -213,6 +221,9 @@ const Profile = () => {
                     <DialogTitle>Change Password</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    {passwordError && (
+                      <div className="text-red-600 text-sm font-medium">{passwordError}</div>
+                    )}
                     <div>
                       <Label htmlFor="currentPassword">Current Password</Label>
                       <Input

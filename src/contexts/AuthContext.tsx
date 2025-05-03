@@ -12,10 +12,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const login = (email: string, password: string) => {
-    // In a real app, you would validate credentials with your backend
-    if (email === "highlanderhomes22@gmail.com" && password.length >= 6) {
+    const storedPassword = localStorage.getItem("highlanderhomes_password") || "highlander2025";
+    if (email === "highlanderhomes22@gmail.com" && password === storedPassword) {
       setIsAuthenticated(true);
       localStorage.setItem("isAuthenticated", "true");
+    } else {
+      alert("Invalid email or password.");
     }
   };
 
