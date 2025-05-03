@@ -3,7 +3,7 @@ name: Deploy & Purge Cloudflare Cache
 on:
   push:
     branches:
-      - main  # change to your deployment branch if different
+      - main
 
 jobs:
   build:
@@ -13,16 +13,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build site (example for Vite)
-        run: |
-          npm install
-          npm run build
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site
+        run: npm run build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          commit_message: "Deploy: ${{ github.event.head_commit.message }}"
 
       - name: Purge Cloudflare cache
         run: |
