@@ -39,20 +39,13 @@ const emptyProperty: Property = {
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<Property[]>(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : mockProperties;
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [form, setForm] = useState<Property>(emptyProperty);
-
-  // Load from localStorage or fallback to mock data
-  useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      setProperties(JSON.parse(stored));
-    } else {
-      setProperties(mockProperties);
-    }
-  }, []);
 
   // Save to localStorage on change
   useEffect(() => {

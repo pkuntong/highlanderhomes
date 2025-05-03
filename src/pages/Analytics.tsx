@@ -1,7 +1,6 @@
-
+import { useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { properties, reminders } from "@/data/mockData";
 import {
   BarChart,
   Bar,
@@ -16,18 +15,30 @@ import {
   Legend,
 } from "recharts";
 
+const PROPERTIES_KEY = "highlanderhomes_properties";
+const REMINDERS_KEY = "highlanderhomes_reminders";
+
 const Analytics = () => {
+  const [properties] = useState(() => {
+    const stored = localStorage.getItem(PROPERTIES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [reminders] = useState(() => {
+    const stored = localStorage.getItem(REMINDERS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
   // Calculate monthly revenue
   const monthlyRevenue = properties.reduce((sum, property) => {
     if (property.status === "occupied") {
-      return sum + property.monthlyRent;
+      return sum + (property.monthlyRent || 0);
     }
     return sum;
   }, 0);
 
   // Calculate potential revenue
   const potentialRevenue = properties.reduce(
-    (sum, property) => sum + property.monthlyRent,
+    (sum, property) => sum + (property.monthlyRent || 0),
     0
   );
 
@@ -35,12 +46,13 @@ const Analytics = () => {
   const occupiedProperties = properties.filter(
     (property) => property.status === "occupied"
   ).length;
-  const occupancyRate = (occupiedProperties / properties.length) * 100;
+  const occupancyRate = properties.length > 0 ? (occupiedProperties / properties.length) * 100 : 0;
 
   // Calculate properties by status
   const propertiesByStatus = [
     { name: "Occupied", value: occupiedProperties },
-    { name: "Vacant", value: properties.length - occupiedProperties },
+    { name: "Vacant", value: properties.filter((p) => p.status === "vacant").length },
+    { name: "Maintenance", value: properties.filter((p) => p.status === "maintenance").length },
   ];
 
   // Calculate upcoming reminders
@@ -48,24 +60,24 @@ const Analytics = () => {
     (reminder) => reminder.status === "pending"
   ).length;
 
-  // Monthly rent data
+  // Monthly rent data (dummy, could be improved)
   const monthlyRentData = [
-    { month: "Jan", revenue: 42000 },
-    { month: "Feb", revenue: 45000 },
-    { month: "Mar", revenue: 48000 },
-    { month: "Apr", revenue: 48000 },
-    { month: "May", revenue: 52000 },
-    { month: "Jun", revenue: 52000 },
-    { month: "Jul", revenue: 52000 },
-    { month: "Aug", revenue: 55000 },
-    { month: "Sep", revenue: 55000 },
-    { month: "Oct", revenue: 55000 },
-    { month: "Nov", revenue: 58000 },
-    { month: "Dec", revenue: 58000 },
+    { month: "Jan", revenue: monthlyRevenue },
+    { month: "Feb", revenue: monthlyRevenue },
+    { month: "Mar", revenue: monthlyRevenue },
+    { month: "Apr", revenue: monthlyRevenue },
+    { month: "May", revenue: monthlyRevenue },
+    { month: "Jun", revenue: monthlyRevenue },
+    { month: "Jul", revenue: monthlyRevenue },
+    { month: "Aug", revenue: monthlyRevenue },
+    { month: "Sep", revenue: monthlyRevenue },
+    { month: "Oct", revenue: monthlyRevenue },
+    { month: "Nov", revenue: monthlyRevenue },
+    { month: "Dec", revenue: monthlyRevenue },
   ];
 
   // Colors for pie chart
-  const COLORS = ["#0088FE", "#FFBB28"];
+  const COLORS = ["#0088FE", "#FFBB28", "#FF8042"];
 
   return (
     <PageLayout title="Analytics">
@@ -115,48 +127,46 @@ const Analytics = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Revenue</CardTitle>
+            <CardTitle>Properties by Status</CardTitle>
           </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyRentData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
-                <Bar dataKey="revenue" fill="#3B82F6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Occupancy Status</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
                   data={propertiesByStatus}
+                  dataKey="value"
+                  nameKey="name"
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
+                  label
                 >
                   {propertiesByStatus.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Legend />
-                <Tooltip formatter={(value) => [value, "Properties"]} />
               </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={monthlyRentData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="revenue" fill="#0088FE" />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>

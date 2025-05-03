@@ -1,17 +1,37 @@
-
+import { useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyCard from "@/components/dashboard/PropertyCard";
 import UpcomingReminders from "@/components/dashboard/UpcomingReminders";
 import MaintenanceStatus from "@/components/dashboard/MaintenanceStatus";
-import { properties, reminders, maintenanceLogs, tenants } from "@/data/mockData";
 import { Building, Users, ArrowUp, ArrowDown, DollarSign, Wrench } from "lucide-react";
 
+const PROPERTIES_KEY = "highlanderhomes_properties";
+const REMINDERS_KEY = "highlanderhomes_reminders";
+const MAINTENANCE_KEY = "highlanderhomes_maintenance";
+
 const Dashboard = () => {
+  // Load data from localStorage
+  const [properties] = useState(() => {
+    const stored = localStorage.getItem(PROPERTIES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const [reminders] = useState(() => {
+    const stored = localStorage.getItem(REMINDERS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const [maintenanceLogs] = useState(() => {
+    const stored = localStorage.getItem(MAINTENANCE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
   // Get only active reminders
-  const activeReminders = reminders.filter(
-    (reminder) => reminder.status === "pending"
-  ).slice(0, 5);
+  const activeReminders = reminders
+    .filter(reminder => reminder.status === "pending")
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
 
   // Get recent maintenance logs
   const recentMaintenanceLogs = [...maintenanceLogs]
@@ -23,18 +43,22 @@ const Dashboard = () => {
     (property) => property.status === "occupied"
   ).length;
 
-  const occupancyRate = Math.round(
-    (occupiedProperties / properties.length) * 100
-  );
+  const occupancyRate = properties.length > 0 
+    ? Math.round((occupiedProperties / properties.length) * 100)
+    : 0;
 
   const totalRent = properties.reduce(
-    (sum, property) => sum + property.monthlyRent,
+    (sum, property) => sum + (property.monthlyRent || 0),
     0
   );
 
   const activeMaintenanceCount = maintenanceLogs.filter(
     (log) => log.status !== "completed"
   ).length;
+
+  // Calculate trends (placeholder - in a real app, this would compare with historical data)
+  const occupancyTrend = 5; // Example trend
+  const revenueTrend = -2; // Example trend
 
   return (
     <PageLayout title="Dashboard">
@@ -48,15 +72,15 @@ const Dashboard = () => {
           title="Occupancy Rate"
           value={`${occupancyRate}%`}
           icon={<Users size={24} />}
-          trend={{ value: 5, label: "vs last month" }}
-          trendUp={true}
+          trend={{ value: occupancyTrend, label: "vs last month" }}
+          trendUp={occupancyTrend > 0}
         />
         <StatCard
           title="Monthly Revenue"
           value={`$${totalRent.toLocaleString()}`}
           icon={<DollarSign size={24} />}
-          trend={{ value: 2, label: "vs last month" }}
-          trendUp={false}
+          trend={{ value: revenueTrend, label: "vs last month" }}
+          trendUp={revenueTrend > 0}
         />
         <StatCard
           title="Active Maintenance"

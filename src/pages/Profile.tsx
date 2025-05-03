@@ -5,6 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Mail, Phone, Lock, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const LOCAL_STORAGE_KEY = "highlanderhomes_profile";
 
@@ -17,8 +26,16 @@ const defaultUserData = {
 };
 
 const Profile = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState(defaultUserData);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -29,17 +46,33 @@ const Profile = () => {
   }, []);
 
   const handleLogout = () => {
-    // In a real app, this would handle logout logic
-    console.log("Logging out...");
-    // You could add toast notification here
+    logout();
+    navigate("/");
   };
 
   const handleSaveProfile = () => {
     setIsEditing(false);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userData));
-    // In a real app, this would save the profile data
-    console.log("Saving profile...", userData);
-    // You could add toast notification here
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, this would validate and update the password
+    if (passwordForm.newPassword === passwordForm.confirmPassword) {
+      // Add your password change logic here
+      console.log("Changing password...");
+      setIsChangePasswordOpen(false);
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
   };
 
   return (
@@ -165,13 +198,67 @@ const Profile = () => {
                 Logout
               </Button>
 
-              <Button
-                variant="outline"
-                className="w-full"
-              >
-                <Lock className="mr-2 h-4 w-4" />
-                Change Password
-              </Button>
+              <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    Change Password
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Change Password</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type="password"
+                        value={passwordForm.currentPassword}
+                        onChange={handlePasswordChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        value={passwordForm.newPassword}
+                        onChange={handlePasswordChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        value={passwordForm.confirmPassword}
+                        onChange={handlePasswordChange}
+                        required
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => setIsChangePasswordOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit">Change Password</Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </div>

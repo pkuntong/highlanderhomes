@@ -14,22 +14,16 @@ const mockDocuments = [
   { id: 4, name: "Maintenance Contract - HVAC Systems", type: "PDF", date: "2024-10-20" },
 ];
 
-const emptyDocument = { id: '', name: '', type: '', date: '' };
+const emptyDocument = { id: '', name: '', type: '', date: '', fileBase64: '' };
 
 const Documents = () => {
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : mockDocuments;
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [form, setForm] = useState<any>(emptyDocument);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      setDocuments(JSON.parse(stored));
-    } else {
-      setDocuments(mockDocuments);
-    }
-  }, []);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(documents));
@@ -56,6 +50,17 @@ const Documents = () => {
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm((prev: any) => ({ ...prev, fileBase64: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -99,6 +104,13 @@ const Documents = () => {
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="date">Date</label>
               <Input name="date" id="date" value={form.date} onChange={handleFormChange} placeholder="YYYY-MM-DD" type="date" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="fileUpload">Upload File</label>
+              <Input name="fileUpload" id="fileUpload" type="file" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*" onChange={handleFileUpload} />
+              {form.fileBase64 && (
+                <span className="block text-xs text-green-600 mt-2">File uploaded</span>
+              )}
             </div>
           </div>
           <div className="flex gap-2 mt-4 justify-end">

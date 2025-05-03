@@ -1,16 +1,21 @@
-
 import { useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { reminders } from "@/data/mockData";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Calendar as CalendarIcon, Key, Wrench } from "lucide-react";
+import { Reminder } from "@/types";
+
+const LOCAL_STORAGE_KEY = "highlanderhomes_reminders";
 
 const Calendar = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [reminders] = useState<Reminder[]>(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
 
   // Group reminders by date
-  const remindersByDate = reminders.reduce<Record<string, typeof reminders>>(
+  const remindersByDate = reminders.reduce<Record<string, Reminder[]>>(
     (acc, reminder) => {
       const dateKey = reminder.date;
       if (!acc[dateKey]) {

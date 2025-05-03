@@ -20,20 +20,13 @@ const emptyTenant: Tenant = {
 };
 
 const Tenants = () => {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : mockTenants;
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [form, setForm] = useState<Tenant>(emptyTenant);
-
-  // Load from localStorage or fallback to mock data
-  useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      setTenants(JSON.parse(stored));
-    } else {
-      setTenants(mockTenants);
-    }
-  }, []);
 
   // Save to localStorage on change
   useEffect(() => {
