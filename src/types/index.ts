@@ -1,32 +1,34 @@
-
 export type Property = {
   id: string;
   address: string;
   city: string;
   state: string;
   zipCode: string;
-  yearBuilt: number;
-  squareFootage: number;
-  bedrooms: number;
-  bathrooms: number;
+  yearBuilt: number | '';
+  squareFootage: number | '';
+  bedrooms: number | '';
+  fullBathrooms: number | '';
+  halfBathrooms: number | '';
   leaseType: string;
-  monthlyRent: number;
+  monthlyRent: number | '';
   status: 'occupied' | 'vacant' | 'maintenance';
+  paymentStatus?: 'paid' | 'pending' | 'overdue';
   description: string;
   imageUrl: string;
+  imageBase64?: string;
 };
 
 export type Tenant = {
   id: string;
-  propertyId: string;
   name: string;
   email: string;
   phone: string;
   leaseStartDate: string;
   leaseEndDate: string;
-  rentAmount: number;
-  paymentStatus: 'paid' | 'pending' | 'overdue';
   notes: string;
+  propertyId?: string;
+  rentAmount?: number;
+  paymentStatus?: 'paid' | 'pending' | 'overdue';
 };
 
 export type MaintenanceLog = {

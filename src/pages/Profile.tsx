@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,17 +6,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Mail, Phone, Lock, LogOut } from "lucide-react";
 
+const LOCAL_STORAGE_KEY = "highlanderhomes_profile";
+
+const defaultUserData = {
+  name: "John Doe",
+  email: "john.doe@highlander.com",
+  phone: "(555) 123-4567",
+  role: "Property Manager",
+  company: "Highlander Homes"
+};
+
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Mock user data
-  const [userData, setUserData] = useState({
-    name: "John Doe",
-    email: "john.doe@highlander.com",
-    phone: "(555) 123-4567",
-    role: "Property Manager",
-    company: "Highlander Homes"
-  });
+  const [userData, setUserData] = useState(defaultUserData);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (stored) {
+      setUserData(JSON.parse(stored));
+    }
+  }, []);
 
   const handleLogout = () => {
     // In a real app, this would handle logout logic
@@ -27,6 +36,7 @@ const Profile = () => {
 
   const handleSaveProfile = () => {
     setIsEditing(false);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userData));
     // In a real app, this would save the profile data
     console.log("Saving profile...", userData);
     // You could add toast notification here
@@ -65,7 +75,21 @@ const Profile = () => {
                     <Label htmlFor="role">Role</Label>
                     <div className="flex items-center mt-1">
                       <Lock className="h-4 w-4 text-gray-500 mr-2" />
-                      <span>{userData.role}</span>
+                      {isEditing ? (
+                        <select
+                          id="role"
+                          className="border rounded px-2 py-1 text-sm"
+                          value={userData.role}
+                          onChange={(e) =>
+                            setUserData({ ...userData, role: e.target.value })
+                          }
+                        >
+                          <option value="Property Manager">Property Manager</option>
+                          <option value="Landlord">Landlord</option>
+                        </select>
+                      ) : (
+                        <span>{userData.role}</span>
+                      )}
                     </div>
                   </div>
                 </div>
