@@ -1,0 +1,19 @@
+/*
+  Content-Type: text/html; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/*.js
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/*.mjs
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/*.ts
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/*.tsx
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff 

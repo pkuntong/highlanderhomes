@@ -11,9 +11,6 @@ export default defineConfig({
     host: true,
     open: true,
     strictPort: true,
-    headers: {
-      "Content-Type": "application/javascript",
-    },
   },
   build: {
     outDir: "dist",
@@ -24,6 +21,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ["react", "react-dom", "react-router-dom"],
         },
+        format: "es",
       },
     },
   },
