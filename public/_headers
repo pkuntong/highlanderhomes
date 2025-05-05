@@ -21,3 +21,8 @@
 /*.css
   X-Content-Type-Options: nosniff
   Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+  Cache-Control: public, max-age=31536000, immutable
