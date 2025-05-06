@@ -48,20 +48,19 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
+    extensions: [".mjs", ".js", ".jsx", ".json"],
   },
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom"],
     esbuildOptions: {
       loader: {
         ".js": "jsx",
-        ".ts": "tsx",
       },
     },
   },
   esbuild: {
-    loader: "tsx",
-    include: /src\/.*\.tsx?$/,
+    loader: "jsx",
+    include: /src\/.*\.[jt]sx?$/,
     exclude: [],
   },
 });
