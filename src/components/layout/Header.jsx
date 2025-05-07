@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Bell, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = ({ title }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [reminders, setReminders] = useState([]);
 
   useEffect(() => {
@@ -17,8 +19,8 @@ const Header = ({ title }) => {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("highlanderhomes_auth");
-    navigate("/login");
+    logout();
+    navigate("/");
   };
 
   return (
