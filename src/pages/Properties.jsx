@@ -11,9 +11,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building, Plus, Edit, Trash2 } from "lucide-react";
-import { properties as mockProperties } from "@/data/mockData";
-
-const LOCAL_STORAGE_KEY = "highlanderhomes_properties";
+import { db } from "@/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from "firebase/firestore";
 
 const emptyProperty = {
   id: "",
@@ -38,18 +44,23 @@ const emptyProperty = {
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [properties, setProperties] = useState(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : mockProperties;
-  });
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyProperty);
 
-  // Save to localStorage on change
+  // Fetch properties from Firestore on mount
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(properties));
-  }, [properties]);
+    async function fetchProperties() {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, "properties"));
+      const props = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setProperties(props);
+      setLoading(false);
+    }
+    fetchProperties();
+  }, []);
 
   const filteredProperties = properties.filter((property) => {
     if (statusFilter !== "all" && property.status !== statusFilter) {
@@ -70,8 +81,10 @@ const Properties = () => {
     setIsEditing(true);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
     if (window.confirm("Are you sure you want to delete this property?")) {
+      const property = properties[index];
+      await deleteDoc(doc(db, "properties", property.id));
       setProperties((prev) => prev.filter((_, i) => i !== index));
     }
   };
@@ -102,14 +115,17 @@ const Properties = () => {
     }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (editIndex !== null) {
       // Update
+      const propertyRef = doc(db, "properties", form.id);
+      await updateDoc(propertyRef, form);
       setProperties((prev) => prev.map((p, i) => (i === editIndex ? form : p)));
     } else {
       // Add
-      setProperties((prev) => [...prev, form]);
+      const docRef = await addDoc(collection(db, "properties"), form);
+      setProperties((prev) => [...prev, { ...form, id: docRef.id }]);
     }
     setIsEditing(false);
     setForm(emptyProperty);
@@ -121,6 +137,8 @@ const Properties = () => {
     setForm(emptyProperty);
     setEditIndex(null);
   };
+
+  if (loading) return <div>Loading properties...</div>;
 
   return (
     <PageLayout title="Properties">
