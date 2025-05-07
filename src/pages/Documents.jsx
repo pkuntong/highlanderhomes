@@ -4,30 +4,36 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileText, Plus, Edit, Trash2 } from "lucide-react";
-
-const LOCAL_STORAGE_KEY = "highlanderhomes_documents";
-
-const mockDocuments = [
-  { id: 1, name: "Property Insurance - 123 Highland Ave", type: "PDF", date: "2025-03-15" },
-  { id: 2, name: "Lease Agreement - 101 Bluegrass Ln", type: "DOCX", date: "2025-01-10" },
-  { id: 3, name: "Inspection Report - 456 Bourbon St", type: "PDF", date: "2024-12-05" },
-  { id: 4, name: "Maintenance Contract - HVAC Systems", type: "PDF", date: "2024-10-20" },
-];
+import { db } from "@/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from "firebase/firestore";
 
 const emptyDocument = { id: '', name: '', type: '', date: '', fileBase64: '' };
 
 const Documents = () => {
-  const [documents, setDocuments] = useState(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : mockDocuments;
-  });
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyDocument);
 
+  // Fetch documents from Firestore on mount
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(documents));
-  }, [documents]);
+    async function fetchDocuments() {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, "documents"));
+      const docsData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setDocuments(docsData);
+      setLoading(false);
+    }
+    fetchDocuments();
+  }, []);
 
   const handleEdit = (index) => {
     setEditIndex(index);
@@ -35,8 +41,10 @@ const Documents = () => {
     setIsEditing(true);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
     if (window.confirm("Are you sure you want to delete this document?")) {
+      const document = documents[index];
+      await deleteDoc(doc(db, "documents", document.id));
       setDocuments((prev) => prev.filter((_, i) => i !== index));
     }
   };
@@ -63,12 +71,17 @@ const Documents = () => {
     }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (editIndex !== null) {
+      // Update
+      const documentRef = doc(db, "documents", form.id);
+      await updateDoc(documentRef, form);
       setDocuments((prev) => prev.map((d, i) => (i === editIndex ? form : d)));
     } else {
-      setDocuments((prev) => [...prev, form]);
+      // Add
+      const docRef = await addDoc(collection(db, "documents"), form);
+      setDocuments((prev) => [...prev, { ...form, id: docRef.id }]);
     }
     setIsEditing(false);
     setForm(emptyDocument);
@@ -80,6 +93,8 @@ const Documents = () => {
     setForm(emptyDocument);
     setEditIndex(null);
   };
+
+  if (loading) return <div>Loading documents...</div>;
 
   return (
     <PageLayout title="Documents">

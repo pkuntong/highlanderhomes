@@ -4,9 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bell, Plus, Calendar as CalendarIcon, Key, Wrench, Edit, Trash2 } from "lucide-react";
-import { reminders as mockReminders } from "@/data/mockData";
-
-const LOCAL_STORAGE_KEY = "highlanderhomes_reminders";
+import { db } from "@/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from "firebase/firestore";
 
 const emptyReminder = {
   id: '',
@@ -20,18 +26,24 @@ const emptyReminder = {
 };
 
 const Reminders = () => {
-  const [reminders, setReminders] = useState(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : mockReminders;
-  });
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyReminder);
 
+  // Fetch reminders from Firestore on mount
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reminders));
-  }, [reminders]);
+    async function fetchReminders() {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, "reminders"));
+      const remindersData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setReminders(remindersData);
+      setLoading(false);
+    }
+    fetchReminders();
+  }, []);
 
   const filterReminders = () => {
     if (filter === "all") return reminders;
@@ -57,8 +69,10 @@ const Reminders = () => {
     setIsEditing(true);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
     if (window.confirm("Are you sure you want to delete this reminder?")) {
+      const reminder = reminders[index];
+      await deleteDoc(doc(db, "reminders", reminder.id));
       setReminders((prev) => prev.filter((_, i) => i !== index));
     }
   };
@@ -74,12 +88,17 @@ const Reminders = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (editIndex !== null) {
+      // Update
+      const reminderRef = doc(db, "reminders", form.id);
+      await updateDoc(reminderRef, form);
       setReminders((prev) => prev.map((r, i) => (i === editIndex ? form : r)));
     } else {
-      setReminders((prev) => [...prev, form]);
+      // Add
+      const docRef = await addDoc(collection(db, "reminders"), form);
+      setReminders((prev) => [...prev, { ...form, id: docRef.id }]);
     }
     setIsEditing(false);
     setForm(emptyReminder);
@@ -93,6 +112,8 @@ const Reminders = () => {
   };
 
   const filteredReminders = filterReminders();
+
+  if (loading) return <div>Loading reminders...</div>;
 
   return (
     <PageLayout title="Reminders">

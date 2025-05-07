@@ -1,17 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Calendar as CalendarIcon, Key, Wrench } from "lucide-react";
-
-const LOCAL_STORAGE_KEY = "highlanderhomes_reminders";
+import { db } from "@/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 const Calendar = () => {
   const [date, setDate] = useState(new Date());
-  const [reminders] = useState(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch reminders from Firestore on mount
+  useEffect(() => {
+    async function fetchReminders() {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, "reminders"));
+      const remindersData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setReminders(remindersData);
+      setLoading(false);
+    }
+    fetchReminders();
+  }, []);
 
   // Group reminders by date
   const remindersByDate = reminders.reduce((acc, reminder) => {
@@ -41,6 +51,8 @@ const Calendar = () => {
         return <CalendarIcon className="h-4 w-4" />;
     }
   };
+
+  if (loading) return <div>Loading reminders...</div>;
 
   return (
     <PageLayout title="Calendar">

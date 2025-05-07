@@ -24,7 +24,7 @@ const FormField = ({
 
 const FormItem = React.forwardRef(({ className, ...props }, ref) => {
   return (
-    <div ref={ref} className={cn("space-y-2", className)} {...props} />
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
   )
 })
 FormItem.displayName = "FormItem"

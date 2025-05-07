@@ -80,33 +80,33 @@ const Sidebar = () => {
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-full flex flex-col p-4">
-          <div className="mb-8 px-2">
-            <h1 className="text-2xl font-bold text-highlander-700">Highlander Homes</h1>
-          </div>
-          
-          <div className="space-y-1">
-            {sidebarItems.map((item) => (
+      <div className="mb-8 px-2">
+        <h1 className="text-2xl font-bold text-highlander-700">Highlander Homes</h1>
+      </div>
+      
+      <div className="space-y-1">
+        {sidebarItems.map((item) => (
               <Link 
                 key={item.path} 
                 to={item.path}
                 onClick={() => setIsOpen(false)}
               >
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    location.pathname === item.path
-                      ? "bg-highlander-100 text-highlander-700"
-                      : "text-muted-foreground hover:bg-highlander-50 hover:text-highlander-700"
-                  )}
-                >
-                  {item.icon}
-                  {item.name}
-                </Button>
-              </Link>
-            ))}
-          </div>
-        </div>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full justify-start text-left font-normal",
+                location.pathname === item.path
+                  ? "bg-highlander-100 text-highlander-700"
+                  : "text-muted-foreground hover:bg-highlander-50 hover:text-highlander-700"
+              )}
+            >
+              {item.icon}
+              {item.name}
+            </Button>
+          </Link>
+        ))}
+      </div>
+    </div>
       </div>
 
       {/* Overlay for mobile */}

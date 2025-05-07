@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,19 +14,28 @@ import {
   Cell,
   Legend,
 } from "recharts";
-
-const PROPERTIES_KEY = "highlanderhomes_properties";
-const REMINDERS_KEY = "highlanderhomes_reminders";
+import { db } from "@/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 const Analytics = () => {
-  const [properties] = useState(() => {
-    const stored = localStorage.getItem(PROPERTIES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
-  const [reminders] = useState(() => {
-    const stored = localStorage.getItem(REMINDERS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [properties, setProperties] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch properties and reminders from Firestore on mount
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      const [propertiesSnap, remindersSnap] = await Promise.all([
+        getDocs(collection(db, "properties")),
+        getDocs(collection(db, "reminders")),
+      ]);
+      setProperties(propertiesSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+      setReminders(remindersSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
 
   // Calculate monthly revenue
   const monthlyRevenue = properties.reduce((sum, property) => {
@@ -78,6 +87,8 @@ const Analytics = () => {
 
   // Colors for pie chart
   const COLORS = ["#0088FE", "#FFBB28", "#FF8042"];
+
+  if (loading) return <div>Loading analytics...</div>;
 
   return (
     <PageLayout title="Analytics">

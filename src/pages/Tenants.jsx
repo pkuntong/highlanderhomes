@@ -4,9 +4,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, User, Edit, Trash2 } from "lucide-react";
-import { tenants as mockTenants } from "@/data/mockData";
-
-const LOCAL_STORAGE_KEY = "highlanderhomes_tenants";
+import { db } from "@/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc
+} from "firebase/firestore";
 
 const emptyTenant = {
   id: '',
@@ -19,18 +25,23 @@ const emptyTenant = {
 };
 
 const Tenants = () => {
-  const [tenants, setTenants] = useState(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : mockTenants;
-  });
+  const [tenants, setTenants] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyTenant);
 
-  // Save to localStorage on change
+  // Fetch tenants from Firestore on mount
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tenants));
-  }, [tenants]);
+    async function fetchTenants() {
+      setLoading(true);
+      const querySnapshot = await getDocs(collection(db, "tenants"));
+      const tenantsData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setTenants(tenantsData);
+      setLoading(false);
+    }
+    fetchTenants();
+  }, []);
 
   const handleEdit = (index) => {
     setEditIndex(index);
@@ -38,8 +49,10 @@ const Tenants = () => {
     setIsEditing(true);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (index) => {
     if (window.confirm("Are you sure you want to delete this tenant?")) {
+      const tenant = tenants[index];
+      await deleteDoc(doc(db, "tenants", tenant.id));
       setTenants((prev) => prev.filter((_, i) => i !== index));
     }
   };
@@ -55,14 +68,17 @@ const Tenants = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (editIndex !== null) {
       // Update
+      const tenantRef = doc(db, "tenants", form.id);
+      await updateDoc(tenantRef, form);
       setTenants((prev) => prev.map((t, i) => (i === editIndex ? form : t)));
     } else {
       // Add
-      setTenants((prev) => [...prev, form]);
+      const docRef = await addDoc(collection(db, "tenants"), form);
+      setTenants((prev) => [...prev, { ...form, id: docRef.id }]);
     }
     setIsEditing(false);
     setForm(emptyTenant);
@@ -74,6 +90,8 @@ const Tenants = () => {
     setForm(emptyTenant);
     setEditIndex(null);
   };
+
+  if (loading) return <div>Loading tenants...</div>;
 
   return (
     <PageLayout title="Tenants">

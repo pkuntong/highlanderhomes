@@ -14,8 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-const LOCAL_STORAGE_KEY = "highlanderhomes_profile";
+import { db } from "@/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const defaultUserData = {
   name: "John Doe",
@@ -25,11 +25,14 @@ const defaultUserData = {
   company: "Highlander Homes"
 };
 
+const PROFILE_DOC_ID = "main"; // You can use a static doc id for single-user or use auth uid for multi-user
+
 const Profile = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState(defaultUserData);
+  const [loading, setLoading] = useState(true);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -38,12 +41,18 @@ const Profile = () => {
   });
   const [passwordError, setPasswordError] = useState("");
 
-  // Load from localStorage on mount
+  // Load from Firestore on mount
   useEffect(() => {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      setUserData(JSON.parse(stored));
+    async function fetchProfile() {
+      setLoading(true);
+      const docRef = doc(db, "profile", PROFILE_DOC_ID);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setUserData(docSnap.data());
+      }
+      setLoading(false);
     }
+    fetchProfile();
   }, []);
 
   const handleLogout = () => {
@@ -51,9 +60,10 @@ const Profile = () => {
     navigate("/login");
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setIsEditing(false);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userData));
+    const docRef = doc(db, "profile", PROFILE_DOC_ID);
+    await setDoc(docRef, userData);
   };
 
   const handlePasswordChange = (e) => {
@@ -82,6 +92,8 @@ const Profile = () => {
       confirmPassword: "",
     });
   };
+
+  if (loading) return <div>Loading profile...</div>;
 
   return (
     <PageLayout title="Profile">

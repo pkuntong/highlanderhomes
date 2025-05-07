@@ -10,7 +10,7 @@ const PageLayout = ({ children, title }) => {
         <Header title={title} />
         <main className="p-4 md:p-6">
           <div className="max-w-7xl mx-auto">
-            {children}
+          {children}
           </div>
         </main>
       </div>

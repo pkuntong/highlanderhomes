@@ -41,7 +41,7 @@ export default function Login() {
   function onSubmit(values) {
     const success = login(values.email, values.password);
     if (success) {
-      navigate("/dashboard");
+    navigate("/dashboard");
     }
   }
 

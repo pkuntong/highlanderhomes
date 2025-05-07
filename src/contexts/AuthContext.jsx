@@ -26,9 +26,9 @@ export function AuthProvider({ children }) {
   // Check if user was previously authenticated
   useEffect(() => {
     try {
-      const storedAuth = localStorage.getItem("isAuthenticated");
-      if (storedAuth === "true") {
-        setIsAuthenticated(true);
+    const storedAuth = localStorage.getItem("isAuthenticated");
+    if (storedAuth === "true") {
+      setIsAuthenticated(true);
       }
     } catch (error) {
       // Handle potential errors from localStorage access if necessary

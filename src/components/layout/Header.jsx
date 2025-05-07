@@ -34,13 +34,13 @@ const Header = ({ title }) => {
             className="relative"
             onClick={() => navigate("/reminders")}
           >
-            <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5" />
             {reminders.length > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
                 {reminders.length}
-              </span>
-            )}
-          </Button>
+                  </span>
+                )}
+              </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -48,7 +48,7 @@ const Header = ({ title }) => {
           >
             <Settings className="h-5 w-5" />
           </Button>
-          <Button
+          <Button 
             variant="ghost"
             size="icon"
             onClick={handleLogout}
