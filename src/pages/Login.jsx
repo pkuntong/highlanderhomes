@@ -39,8 +39,10 @@ export default function Login() {
   });
 
   function onSubmit(values) {
-    login(values.email, values.password);
-    navigate("/dashboard");
+    const success = login(values.email, values.password);
+    if (success) {
+      navigate("/dashboard");
+    }
   }
 
   return (

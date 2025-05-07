@@ -26,53 +26,22 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/properties" element={
-              <ProtectedRoute>
-                <Properties />
-              </ProtectedRoute>
-            } />
-            <Route path="/documents" element={
-              <ProtectedRoute>
-                <Documents />
-              </ProtectedRoute>
-            } />
-            <Route path="/calendar" element={
-              <ProtectedRoute>
-                <Calendar />
-              </ProtectedRoute>
-            } />
-            <Route path="/reminders" element={
-              <ProtectedRoute>
-                <Reminders />
-              </ProtectedRoute>
-            } />
-            <Route path="/analytics" element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/tenants" element={
-              <ProtectedRoute>
-                <Tenants />
-              </ProtectedRoute>
-            } />
-            {/* Redirect root to dashboard if authenticated */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Navigate to="/dashboard" replace />
-              </ProtectedRoute>
-            } />
+            {/* Public route */}
+            <Route path="/login" element={<Login />} />
+            
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/properties" element={<Properties />} />
+              <Route path="/documents" element={<Documents />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/reminders" element={<Reminders />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/tenants" element={<Tenants />} />
+            </Route>
+
             {/* Catch all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
