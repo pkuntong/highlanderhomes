@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Building, Home, Users, Calendar, Wrench, BarChart3, FileText } from "lucide-react";
@@ -10,7 +9,7 @@ const Index = () => {
       <section className="pt-20 pb-16 px-4 text-center">
         <div className="max-w-6xl mx-auto">
           <img 
-            src="/Highlander Homes Logo.png" 
+            src="/HH Logo.png" 
             alt="Highlander Homes Logo" 
             className="w-24 h-24 mx-auto mb-6"
           />
