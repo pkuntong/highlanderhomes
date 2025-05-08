@@ -81,7 +81,10 @@ const Sidebar = () => {
       )}>
         <div className="h-full flex flex-col p-4">
       <div className="mb-8 px-2">
-        <h1 className="text-2xl font-bold text-highlander-700">Highlander Homes</h1>
+        <div className="flex items-center gap-2">
+          <img src="/Highlander Homes Logo.png" alt="Highlander Homes Logo" className="h-10 w-auto" />
+          <h1 className="text-2xl font-bold text-highlander-700">Highlander Homes</h1>
+        </div>
       </div>
       
       <div className="space-y-1">

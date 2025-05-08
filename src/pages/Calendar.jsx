@@ -25,12 +25,12 @@ const Calendar = () => {
 
   // Group reminders by date
   const remindersByDate = reminders.reduce((acc, reminder) => {
-    const dateKey = reminder.date;
-    if (!acc[dateKey]) {
-      acc[dateKey] = [];
-    }
-    acc[dateKey].push(reminder);
-    return acc;
+      const dateKey = reminder.date;
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(reminder);
+      return acc;
   }, {});
 
   const selectedDateReminders = date
