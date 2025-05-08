@@ -60,6 +60,8 @@ const Properties = () => {
       setLoading(false);
     }
     fetchProperties();
+    // Expose fetchProperties for later use
+    Properties.fetchProperties = fetchProperties;
   }, []);
 
   const filteredProperties = properties.filter((property) => {
@@ -85,7 +87,7 @@ const Properties = () => {
     if (window.confirm("Are you sure you want to delete this property?")) {
       const property = properties[index];
       await deleteDoc(doc(db, "properties", property.id));
-      setProperties((prev) => prev.filter((_, i) => i !== index));
+      await Properties.fetchProperties();
     }
   };
 
@@ -121,11 +123,11 @@ const Properties = () => {
       // Update
       const propertyRef = doc(db, "properties", form.id);
       await updateDoc(propertyRef, form);
-      setProperties((prev) => prev.map((p, i) => (i === editIndex ? form : p)));
+      await Properties.fetchProperties();
     } else {
       // Add
       const docRef = await addDoc(collection(db, "properties"), form);
-      setProperties((prev) => [...prev, { ...form, id: docRef.id }]);
+      await Properties.fetchProperties();
     }
     setIsEditing(false);
     setForm(emptyProperty);

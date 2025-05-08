@@ -35,15 +35,18 @@ const Reminders = () => {
 
   // Fetch reminders from Firestore on mount
   useEffect(() => {
-    async function fetchReminders() {
-      setLoading(true);
-      const querySnapshot = await getDocs(collection(db, "reminders"));
-      const remindersData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      setReminders(remindersData);
-      setLoading(false);
-    }
     fetchReminders();
+    // Expose fetchReminders for later use
+    Reminders.fetchReminders = fetchReminders;
   }, []);
+
+  async function fetchReminders() {
+    setLoading(true);
+    const querySnapshot = await getDocs(collection(db, "reminders"));
+    const remindersData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+    setReminders(remindersData);
+    setLoading(false);
+  }
 
   const filterReminders = () => {
     if (filter === "all") return reminders;
@@ -73,7 +76,7 @@ const Reminders = () => {
     if (window.confirm("Are you sure you want to delete this reminder?")) {
       const reminder = reminders[index];
       await deleteDoc(doc(db, "reminders", reminder.id));
-      setReminders((prev) => prev.filter((_, i) => i !== index));
+      await Reminders.fetchReminders();
     }
   };
 
@@ -94,11 +97,11 @@ const Reminders = () => {
       // Update
       const reminderRef = doc(db, "reminders", form.id);
       await updateDoc(reminderRef, form);
-      setReminders((prev) => prev.map((r, i) => (i === editIndex ? form : r)));
+      await Reminders.fetchReminders();
     } else {
       // Add
       const docRef = await addDoc(collection(db, "reminders"), form);
-      setReminders((prev) => [...prev, { ...form, id: docRef.id }]);
+      await Reminders.fetchReminders();
     }
     setIsEditing(false);
     setForm(emptyReminder);

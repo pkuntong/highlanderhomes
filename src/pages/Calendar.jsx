@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Bell, Calendar as CalendarIcon, Key, Wrench } from "lucide-react";
 import { db } from "@/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
 
 const Calendar = () => {
   const [date, setDate] = useState(new Date());
@@ -13,15 +14,16 @@ const Calendar = () => {
 
   // Fetch reminders from Firestore on mount
   useEffect(() => {
-    async function fetchReminders() {
-      setLoading(true);
-      const querySnapshot = await getDocs(collection(db, "reminders"));
-      const remindersData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      setReminders(remindersData);
-      setLoading(false);
-    }
     fetchReminders();
   }, []);
+
+  async function fetchReminders() {
+    setLoading(true);
+    const querySnapshot = await getDocs(collection(db, "reminders"));
+    const remindersData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+    setReminders(remindersData);
+    setLoading(false);
+  }
 
   // Group reminders by date
   const remindersByDate = reminders.reduce((acc, reminder) => {
@@ -56,6 +58,9 @@ const Calendar = () => {
 
   return (
     <PageLayout title="Calendar">
+      <div className="mb-4 flex justify-end">
+        <Button onClick={fetchReminders} variant="outline">Refresh</Button>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
           <CardContent className="p-4">

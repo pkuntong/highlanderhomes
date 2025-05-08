@@ -1,31 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyCard from "@/components/dashboard/PropertyCard";
 import UpcomingReminders from "@/components/dashboard/UpcomingReminders";
 import MaintenanceStatus from "@/components/dashboard/MaintenanceStatus";
 import { Building, Users, ArrowUp, ArrowDown, DollarSign, Wrench } from "lucide-react";
+import { db } from "@/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 const PROPERTIES_KEY = "highlanderhomes_properties";
 const REMINDERS_KEY = "highlanderhomes_reminders";
 const MAINTENANCE_KEY = "highlanderhomes_maintenance";
 
 const Dashboard = () => {
-  // Load data from localStorage
-  const [properties] = useState(() => {
-    const stored = localStorage.getItem(PROPERTIES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [properties, setProperties] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [maintenanceLogs, setMaintenanceLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [reminders] = useState(() => {
-    const stored = localStorage.getItem(REMINDERS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
-
-  const [maintenanceLogs] = useState(() => {
-    const stored = localStorage.getItem(MAINTENANCE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      const [propertiesSnap, remindersSnap, maintenanceSnap] = await Promise.all([
+        getDocs(collection(db, "properties")),
+        getDocs(collection(db, "reminders")),
+        getDocs(collection(db, "maintenanceLogs")),
+      ]);
+      setProperties(propertiesSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+      setReminders(remindersSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+      setMaintenanceLogs(maintenanceSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
 
   // Get only active reminders
   const activeReminders = reminders

@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { db } from "@/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
 
 const Analytics = () => {
   const [properties, setProperties] = useState([]);
@@ -24,18 +25,19 @@ const Analytics = () => {
 
   // Fetch properties and reminders from Firestore on mount
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      const [propertiesSnap, remindersSnap] = await Promise.all([
-        getDocs(collection(db, "properties")),
-        getDocs(collection(db, "reminders")),
-      ]);
-      setProperties(propertiesSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
-      setReminders(remindersSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
-      setLoading(false);
-    }
     fetchData();
   }, []);
+
+  async function fetchData() {
+    setLoading(true);
+    const [propertiesSnap, remindersSnap] = await Promise.all([
+      getDocs(collection(db, "properties")),
+      getDocs(collection(db, "reminders")),
+    ]);
+    setProperties(propertiesSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+    setReminders(remindersSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+    setLoading(false);
+  }
 
   // Calculate monthly revenue
   const monthlyRevenue = properties.reduce((sum, property) => {
@@ -92,6 +94,9 @@ const Analytics = () => {
 
   return (
     <PageLayout title="Analytics">
+      <div className="mb-4 flex justify-end">
+        <Button onClick={fetchData} variant="outline">Refresh</Button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">

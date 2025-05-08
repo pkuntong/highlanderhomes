@@ -33,6 +33,8 @@ const Documents = () => {
       setLoading(false);
     }
     fetchDocuments();
+    // Expose fetchDocuments for later use
+    Documents.fetchDocuments = fetchDocuments;
   }, []);
 
   const handleEdit = (index) => {
@@ -45,7 +47,7 @@ const Documents = () => {
     if (window.confirm("Are you sure you want to delete this document?")) {
       const document = documents[index];
       await deleteDoc(doc(db, "documents", document.id));
-      setDocuments((prev) => prev.filter((_, i) => i !== index));
+      await Documents.fetchDocuments();
     }
   };
 
@@ -77,11 +79,11 @@ const Documents = () => {
       // Update
       const documentRef = doc(db, "documents", form.id);
       await updateDoc(documentRef, form);
-      setDocuments((prev) => prev.map((d, i) => (i === editIndex ? form : d)));
+      await Documents.fetchDocuments();
     } else {
       // Add
       const docRef = await addDoc(collection(db, "documents"), form);
-      setDocuments((prev) => [...prev, { ...form, id: docRef.id }]);
+      await Documents.fetchDocuments();
     }
     setIsEditing(false);
     setForm(emptyDocument);

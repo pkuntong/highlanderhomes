@@ -53,6 +53,8 @@ const Profile = () => {
       setLoading(false);
     }
     fetchProfile();
+    // Expose fetchProfile for later use
+    Profile.fetchProfile = fetchProfile;
   }, []);
 
   const handleLogout = () => {
@@ -64,6 +66,7 @@ const Profile = () => {
     setIsEditing(false);
     const docRef = doc(db, "profile", PROFILE_DOC_ID);
     await setDoc(docRef, userData);
+    await Profile.fetchProfile();
   };
 
   const handlePasswordChange = (e) => {

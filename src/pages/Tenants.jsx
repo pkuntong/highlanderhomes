@@ -41,6 +41,8 @@ const Tenants = () => {
       setLoading(false);
     }
     fetchTenants();
+    // Expose fetchTenants for later use
+    Tenants.fetchTenants = fetchTenants;
   }, []);
 
   const handleEdit = (index) => {
@@ -53,7 +55,7 @@ const Tenants = () => {
     if (window.confirm("Are you sure you want to delete this tenant?")) {
       const tenant = tenants[index];
       await deleteDoc(doc(db, "tenants", tenant.id));
-      setTenants((prev) => prev.filter((_, i) => i !== index));
+      await Tenants.fetchTenants();
     }
   };
 
@@ -74,11 +76,11 @@ const Tenants = () => {
       // Update
       const tenantRef = doc(db, "tenants", form.id);
       await updateDoc(tenantRef, form);
-      setTenants((prev) => prev.map((t, i) => (i === editIndex ? form : t)));
+      await Tenants.fetchTenants();
     } else {
       // Add
       const docRef = await addDoc(collection(db, "tenants"), form);
-      setTenants((prev) => [...prev, { ...form, id: docRef.id }]);
+      await Tenants.fetchTenants();
     }
     setIsEditing(false);
     setForm(emptyTenant);
