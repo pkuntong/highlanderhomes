@@ -36,7 +36,7 @@ const Header = ({ title }) => {
           >
                 <Bell className="h-5 w-5" />
             {reminders.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white pointer-events-none">
                 {reminders.length}
                   </span>
                 )}
