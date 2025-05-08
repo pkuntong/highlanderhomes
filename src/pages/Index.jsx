@@ -23,7 +23,7 @@ const Index = () => {
           <div className="flex flex-wrap justify-center gap-4">
             <Button asChild size="lg" className="bg-highlander-600 hover:bg-highlander-700">
               <Link to="/login">
-                Login to Dashboard
+                Login
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
