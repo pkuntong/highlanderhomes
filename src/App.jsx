@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
+import Index from "./pages/Index";
 import Properties from "./pages/Properties";
 import Calendar from "./pages/Calendar";
 import Documents from "./pages/Documents";
@@ -28,12 +29,12 @@ const App = () => (
       <BrowserRouter>
         <SpeedInsights />
         <Routes>
-            {/* Public route */}
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/properties" element={<Properties />} />
               <Route path="/documents" element={<Documents />} />
