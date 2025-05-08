@@ -155,6 +155,18 @@ const Documents = () => {
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
                   <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
+                  {document.fileBase64 && (
+                    <a
+                      href={document.fileBase64}
+                      download={document.name || 'document'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button size="icon" variant="outline" asChild>
+                        <span title="Download"><FileText className="h-4 w-4" /></span>
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
