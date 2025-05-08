@@ -18,7 +18,7 @@ import { useState } from "react";
 const sidebarItems = [
   { 
     name: "Dashboard", 
-    path: "/", 
+    path: "/dashboard", 
     icon: <LayoutDashboard className="mr-2 h-5 w-5" /> 
   },
   { 
@@ -82,8 +82,10 @@ const Sidebar = () => {
         <div className="h-full flex flex-col p-4">
       <div className="mb-8 px-2">
         <div className="flex items-center gap-2">
-          <img src="/Highlander Homes Logo.png" alt="Highlander Homes Logo" className="h-10 w-auto" />
-          <h1 className="text-2xl font-bold text-highlander-700">Highlander Homes</h1>
+          <Link to="/" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
+            <img src="/Highlander Homes Logo.png" alt="Highlander Homes Logo" className="h-10 w-auto" />
+            <h1 className="text-2xl font-bold text-highlander-700">Highlander Homes</h1>
+          </Link>
         </div>
       </div>
       
