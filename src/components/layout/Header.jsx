@@ -26,7 +26,7 @@ const Header = ({ title }) => {
   return (
     <header className="sticky top-0 z-30 border-b bg-background">
       <div className="flex h-16 items-center px-4 md:px-6">
-        <h1 className="text-lg font-semibold truncate">{title}</h1>
+        <h1 className="text-lg font-semibold truncate ml-14 sm:ml-8 lg:ml-0">{title}</h1>
         <div className="ml-auto flex items-center space-x-2 md:space-x-4">
           <Button
             variant="ghost"
