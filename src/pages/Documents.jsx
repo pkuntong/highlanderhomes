@@ -3,7 +3,7 @@ import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Edit, Trash2 } from "lucide-react";
+import { FileText, Plus, Edit, Trash2, Eye } from "lucide-react";
 import { db } from "@/firebase";
 import {
   collection,
@@ -13,6 +13,20 @@ import {
   deleteDoc,
   doc
 } from "firebase/firestore";
+import React from "react";
+
+// Simple Modal component
+function Modal({ open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative">
+        <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700" onClick={onClose}>&times;</button>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const emptyDocument = { id: '', name: '', type: '', date: '', fileBase64: '' };
 
@@ -22,6 +36,8 @@ const Documents = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyDocument);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDoc, setModalDoc] = useState(null);
 
   // Fetch documents from Firestore on mount
   useEffect(() => {
@@ -96,10 +112,34 @@ const Documents = () => {
     setEditIndex(null);
   };
 
+  const handleView = (doc) => {
+    setModalDoc(doc);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setModalDoc(null);
+  };
+
   if (loading) return <div>Loading documents...</div>;
 
   return (
     <PageLayout title="Documents">
+      <Modal open={modalOpen} onClose={handleCloseModal}>
+        {modalDoc && modalDoc.fileBase64 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">{modalDoc.name}</h2>
+            {modalDoc.type.toLowerCase().includes('pdf') ? (
+              <iframe src={modalDoc.fileBase64} title={modalDoc.name} className="w-full h-96 border rounded" />
+            ) : modalDoc.type.toLowerCase().match(/jpg|jpeg|png|gif|bmp|webp/) ? (
+              <img src={modalDoc.fileBase64} alt={modalDoc.name} className="max-h-96 mx-auto" />
+            ) : (
+              <div className="text-gray-500">Preview not available for this file type.</div>
+            )}
+          </div>
+        )}
+      </Modal>
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Property Documents</h2>
         <Button onClick={handleAdd}>
@@ -158,16 +198,21 @@ const Documents = () => {
                   <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
                   <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
                   {document.fileBase64 && (
-                    <a
-                      href={document.fileBase64}
-                      download={document.name || 'document'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button size="icon" variant="outline" asChild>
-                        <span title="Download"><FileText className="h-4 w-4" /></span>
+                    <>
+                      <Button size="icon" variant="outline" onClick={() => handleView(document)} title="View">
+                        <Eye className="h-4 w-4" />
                       </Button>
-                    </a>
+                      <a
+                        href={document.fileBase64}
+                        download={document.name || 'document'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button size="icon" variant="outline" asChild>
+                          <span title="Download"><FileText className="h-4 w-4" /></span>
+                        </Button>
+                      </a>
+                    </>
                   )}
                 </div>
               </CardContent>

@@ -22,7 +22,6 @@ import {
 } from "firebase/firestore";
 
 const emptyProperty = {
-  id: "",
   address: "",
   city: "",
   state: "",
@@ -49,6 +48,7 @@ const Properties = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyProperty);
+  const [deleteErrorIndex, setDeleteErrorIndex] = useState(null);
 
   // Fetch properties from Firestore on mount
   useEffect(() => {
@@ -84,16 +84,26 @@ const Properties = () => {
   };
 
   const handleDelete = async (index) => {
+    const property = properties[index];
     if (window.confirm("Are you sure you want to delete this property?")) {
-      const property = properties[index];
-      await deleteDoc(doc(db, "properties", property.id));
-      await Properties.fetchProperties();
+      try {
+        if (property.id) {
+          await deleteDoc(doc(db, "properties", property.id));
+        }
+        setProperties(prev => prev.filter((_, i) => i !== index));
+        setDeleteErrorIndex(null);
+        await Properties.fetchProperties();
+      } catch (error) {
+        console.error("Error deleting property:", error);
+        alert(`Failed to delete property: ${error.message}. You can now force remove this property from the list.`);
+        setDeleteErrorIndex(index);
+      }
     }
   };
 
   const handleAdd = () => {
     setEditIndex(null);
-    setForm({ ...emptyProperty, id: Date.now().toString() });
+    setForm(emptyProperty);
     setIsEditing(true);
   };
 
@@ -121,17 +131,31 @@ const Properties = () => {
     e.preventDefault();
     if (editIndex !== null) {
       // Update
-      const propertyRef = doc(db, "properties", form.id);
-      await updateDoc(propertyRef, form);
-      await Properties.fetchProperties();
+      const property = properties[editIndex];
+      const propertyRef = doc(db, "properties", property.id);
+      try {
+        await updateDoc(propertyRef, form);
+        await Properties.fetchProperties();
+        setIsEditing(false);
+        setForm(emptyProperty);
+        setEditIndex(null);
+      } catch (error) {
+        console.error("Error updating property:", error);
+        alert(`Failed to update property: ${error.message}. Please try again.`);
+      }
     } else {
       // Add
-      const docRef = await addDoc(collection(db, "properties"), form);
-      await Properties.fetchProperties();
+      try {
+        await addDoc(collection(db, "properties"), form);
+        await Properties.fetchProperties();
+        setIsEditing(false);
+        setForm(emptyProperty);
+        setEditIndex(null);
+      } catch (error) {
+        console.error("Error adding property:", error);
+        alert(`Failed to add property: ${error.message}. Please try again.`);
+      }
     }
-    setIsEditing(false);
-    setForm(emptyProperty);
-    setEditIndex(null);
   };
 
   const handleCancel = () => {
@@ -296,6 +320,11 @@ const Properties = () => {
               <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                 <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
                 <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
+                {deleteErrorIndex === idx && (
+                  <Button size="icon" variant="destructive" onClick={() => setProperties(prev => prev.filter((_, i) => i !== idx))}>
+                    Remove from List
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

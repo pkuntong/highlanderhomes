@@ -15,7 +15,6 @@ import {
 } from "firebase/firestore";
 
 const emptyTenant = {
-  id: '',
   name: '',
   email: '',
   phone: '',
@@ -30,6 +29,7 @@ const Tenants = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyTenant);
+  const [deleteErrorIndex, setDeleteErrorIndex] = useState(null);
 
   // Fetch tenants from Firestore on mount
   useEffect(() => {
@@ -46,22 +46,34 @@ const Tenants = () => {
   }, []);
 
   const handleEdit = (index) => {
+    console.log("Editing tenant at index:", index);
+    console.log("Tenant data:", tenants[index]);
     setEditIndex(index);
     setForm(tenants[index]);
     setIsEditing(true);
   };
 
   const handleDelete = async (index) => {
+    const tenant = tenants[index];
     if (window.confirm("Are you sure you want to delete this tenant?")) {
-      const tenant = tenants[index];
-      await deleteDoc(doc(db, "tenants", tenant.id));
-      await Tenants.fetchTenants();
+      try {
+        if (tenant.id) {
+          await deleteDoc(doc(db, "tenants", tenant.id));
+        }
+        setTenants(prev => prev.filter((_, i) => i !== index));
+        setDeleteErrorIndex(null);
+        await Tenants.fetchTenants();
+      } catch (error) {
+        console.error("Error deleting tenant:", error);
+        alert(`Failed to delete tenant: ${error.message}. You can now force remove this tenant from the list.`);
+        setDeleteErrorIndex(index);
+      }
     }
   };
 
   const handleAdd = () => {
     setEditIndex(null);
-    setForm({ ...emptyTenant, id: Date.now().toString() });
+    setForm(emptyTenant);
     setIsEditing(true);
   };
 
@@ -74,17 +86,48 @@ const Tenants = () => {
     e.preventDefault();
     if (editIndex !== null) {
       // Update
-      const tenantRef = doc(db, "tenants", form.id);
-      await updateDoc(tenantRef, form);
-      await Tenants.fetchTenants();
+      const tenant = tenants[editIndex];
+      const tenantRef = doc(db, "tenants", tenant.id);
+      try {
+        console.log("Updating tenant with ID:", tenant.id);
+        console.log("Update data:", form);
+        
+        // Validate that we have an ID
+        if (!tenant.id) {
+          throw new Error("No tenant ID found");
+        }
+
+        // Ensure all required fields are present
+        const requiredFields = ["name", "email", "phone", "leaseStartDate", "leaseEndDate"];
+        const missingFields = requiredFields.filter(field => !form[field]);
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+        }
+
+        await updateDoc(tenantRef, form);
+        console.log("Update successful");
+        await Tenants.fetchTenants();
+        setIsEditing(false);
+        setForm(emptyTenant);
+        setEditIndex(null);
+      } catch (error) {
+        console.error("Error updating tenant:", error);
+        alert(`Failed to update tenant: ${error.message}. Please try again.`);
+      }
     } else {
       // Add
-      const docRef = await addDoc(collection(db, "tenants"), form);
-      await Tenants.fetchTenants();
+      try {
+        const docRef = await addDoc(collection(db, "tenants"), form);
+        console.log("Added new tenant with ID:", docRef.id);
+        await Tenants.fetchTenants();
+        setIsEditing(false);
+        setForm(emptyTenant);
+        setEditIndex(null);
+      } catch (error) {
+        console.error("Error adding tenant:", error);
+        alert(`Failed to add tenant: ${error.message}. Please try again.`);
+      }
     }
-    setIsEditing(false);
-    setForm(emptyTenant);
-    setEditIndex(null);
   };
 
   const handleCancel = () => {
@@ -99,9 +142,14 @@ const Tenants = () => {
     <PageLayout title="Tenants">
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Tenant Management</h2>
-        <Button onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" /> Add Tenant
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleAdd}>
+            <Plus className="mr-2 h-4 w-4" /> Add Tenant
+          </Button>
+          <Button variant="destructive" onClick={() => { if(window.confirm('Are you sure you want to clear all tenants?')) setTenants([]); }}>
+            Clear All Tenants
+          </Button>
+        </div>
       </div>
 
       {isEditing && (
@@ -157,6 +205,11 @@ const Tenants = () => {
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
                   <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
+                  {deleteErrorIndex === idx && (
+                    <Button size="icon" variant="destructive" onClick={() => setTenants(prev => prev.filter((_, i) => i !== idx))}>
+                      Remove from List
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
