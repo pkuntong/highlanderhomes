@@ -11,7 +11,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  doc
+  doc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 
 const emptyTenant = {
@@ -67,6 +69,16 @@ const Tenants = () => {
         console.error("Error deleting tenant:", error);
         alert(`Failed to delete tenant: ${error.message}. You can now force remove this tenant from the list.`);
         setDeleteErrorIndex(index);
+      }// Before calling updateDoc in the try block:
+      // Check if document exists first
+      const docSnapshot = await getDoc(tenantRef);
+      if (!docSnapshot.exists()) {
+        // Document doesn't exist, create it instead
+        console.log("Document doesn't exist, creating instead of updating");
+        await setDoc(tenantRef, form);
+      } else {
+        // Document exists, update it
+        await updateDoc(tenantRef, form);
       }
     }
   };
@@ -145,6 +157,9 @@ const Tenants = () => {
         <div className="flex gap-2">
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" /> Add Tenant
+          </Button>
+          <Button variant="outline" onClick={() => Tenants.fetchTenants()}>
+            Refresh Tenants
           </Button>
           <Button variant="destructive" onClick={() => { if(window.confirm('Are you sure you want to clear all tenants?')) setTenants([]); }}>
             Clear All Tenants
