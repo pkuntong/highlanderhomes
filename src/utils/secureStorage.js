@@ -1,7 +1,7 @@
 // Secure storage utilities for handling documents and sensitive data
 import { auth, storage, db } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 
 /**
  * Uploads a file to Firebase Storage with security checks
@@ -119,5 +119,24 @@ export const updateSecureDocument = async (documentId, documentData) => {
   };
   
   const documentRef = doc(db, 'documents', documentId);
-  await updateDoc(documentRef, secureDocumentData);
+  
+  // Check if document exists first
+  console.log(`Checking if document ${documentId} exists before updating`);
+  const docSnapshot = await getDoc(documentRef);
+  
+  if (!docSnapshot.exists()) {
+    // Document doesn't exist, create it instead
+    console.log(`Document ${documentId} doesn't exist, creating instead of updating`);
+    // Add creation metadata too
+    const newDocumentData = {
+      ...secureDocumentData,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+    };
+    await setDoc(documentRef, newDocumentData);
+  } else {
+    // Document exists, update it
+    console.log(`Document ${documentId} exists, updating`);
+    await updateDoc(documentRef, secureDocumentData);
+  }
 };

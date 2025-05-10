@@ -18,7 +18,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  doc
+  doc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 
 const emptyProperty = {
@@ -134,7 +136,17 @@ const Properties = () => {
       const property = properties[editIndex];
       const propertyRef = doc(db, "properties", property.id);
       try {
-        await updateDoc(propertyRef, form);
+        // First import the required functions at the top of the file
+        // Check if document exists first
+        const docSnapshot = await getDoc(propertyRef);
+        if (!docSnapshot.exists()) {
+          // Document doesn't exist, create it instead
+          console.log("Property document doesn't exist, creating instead of updating");
+          await setDoc(propertyRef, form);
+        } else {
+          // Document exists, update it
+          await updateDoc(propertyRef, form);
+        }
         await Properties.fetchProperties();
         setIsEditing(false);
         setForm(emptyProperty);
@@ -193,9 +205,14 @@ const Properties = () => {
           </Select>
         </div>
 
-        <Button className="md:self-end" onClick={handleAdd}>
-          <Plus className="mr-2 h-4 w-4" /> Add Property
-        </Button>
+        <div className="flex gap-2 md:self-end">
+          <Button variant="outline" onClick={() => Properties.fetchProperties()}>
+            Refresh Properties
+          </Button>
+          <Button onClick={handleAdd}>
+            <Plus className="mr-2 h-4 w-4" /> Add Property
+          </Button>
+        </div>
       </div>
 
       {isEditing && (

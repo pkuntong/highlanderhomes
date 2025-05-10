@@ -69,16 +69,6 @@ const Tenants = () => {
         console.error("Error deleting tenant:", error);
         alert(`Failed to delete tenant: ${error.message}. You can now force remove this tenant from the list.`);
         setDeleteErrorIndex(index);
-      }// Before calling updateDoc in the try block:
-      // Check if document exists first
-      const docSnapshot = await getDoc(tenantRef);
-      if (!docSnapshot.exists()) {
-        // Document doesn't exist, create it instead
-        console.log("Document doesn't exist, creating instead of updating");
-        await setDoc(tenantRef, form);
-      } else {
-        // Document exists, update it
-        await updateDoc(tenantRef, form);
       }
     }
   };
@@ -115,8 +105,17 @@ const Tenants = () => {
         if (missingFields.length > 0) {
           throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
         }
-
-        await updateDoc(tenantRef, form);
+        
+        // Check if document exists first
+        const docSnapshot = await getDoc(tenantRef);
+        if (!docSnapshot.exists()) {
+          // Document doesn't exist, create it instead
+          console.log("Document doesn't exist, creating instead of updating");
+          await setDoc(tenantRef, form);
+        } else {
+          // Document exists, update it
+          await updateDoc(tenantRef, form);
+        }
         console.log("Update successful");
         await Tenants.fetchTenants();
         setIsEditing(false);
