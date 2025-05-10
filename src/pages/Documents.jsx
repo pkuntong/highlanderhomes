@@ -3,7 +3,7 @@ import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Edit, Trash2, Eye } from "lucide-react";
+import { FileText, Plus, Edit, Trash2, Eye, Home } from "lucide-react";
 import { db } from "@/firebase";
 import {
   collection,
@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Simple Modal component
 function Modal({ open, onClose, children }) {
@@ -37,7 +38,7 @@ const CATEGORY_OPTIONS = [
   "Other"
 ];
 
-const emptyDocument = { id: '', name: '', type: '', date: '', fileBase64: '', house_id: '', category: '' };
+const emptyDocument = { name: '', type: '', date: '', fileBase64: '', house_id: '', category: '', fileName: '', fileType: '' };
 
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
@@ -48,6 +49,7 @@ const Documents = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDoc, setModalDoc] = useState(null);
   const [properties, setProperties] = useState([]);
+  const [activeHouse, setActiveHouse] = useState("all");
 
   // Fetch documents from Firestore on mount
   useEffect(() => {
@@ -88,7 +90,7 @@ const Documents = () => {
 
   const handleAdd = () => {
     setEditIndex(null);
-    setForm({ ...emptyDocument, id: Date.now().toString() });
+    setForm(emptyDocument);
     setIsEditing(true);
   };
 
@@ -100,9 +102,16 @@ const Documents = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size - Firestore has a 1MB limit for document size
+      if (file.size > 900000) { // ~900KB to leave room for other document data
+        alert("File is too large. Please upload a file smaller than 900KB or use a file storage service instead.");
+        return;
+      }
+      
+      // For small files, we can store them directly in Firestore
       const reader = new FileReader();
       reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, fileBase64: reader.result }));
+        setForm((prev) => ({ ...prev, fileBase64: reader.result, fileName: file.name, fileType: file.type }));
       };
       reader.readAsDataURL(file);
     }
@@ -110,19 +119,48 @@ const Documents = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (editIndex !== null) {
-      // Update
-      const documentRef = doc(db, "documents", form.id);
-      await updateDoc(documentRef, form);
+    try {
+      // Validate form data
+      if (!form.name || !form.date || !form.house_id) {
+        alert("Please fill in all required fields");
+        return;
+      }
+      
+      // Check if file is too large for Firestore
+      if (form.fileBase64 && form.fileBase64.length > 900000) {
+        alert("File is too large for storage. Please use a smaller file (less than 900KB).");
+        return;
+      }
+      
+      // Prepare document data
+      const docData = {
+        name: form.name,
+        type: form.type || form.fileType || '',
+        date: form.date,
+        house_id: form.house_id,
+        category: form.category || '',
+        fileName: form.fileName || '',
+        fileType: form.fileType || '',
+        fileBase64: form.fileBase64 || ''
+      };
+      
+      if (editIndex !== null) {
+        // Update
+        const documentRef = doc(db, "documents", documents[editIndex].id);
+        await updateDoc(documentRef, docData);
+      } else {
+        // Add new document
+        await addDoc(collection(db, "documents"), docData);
+      }
+      
       await Documents.fetchDocuments();
-    } else {
-      // Add
-      const docRef = await addDoc(collection(db, "documents"), form);
-      await Documents.fetchDocuments();
+      setIsEditing(false);
+      setForm(emptyDocument);
+      setEditIndex(null);
+    } catch (error) {
+      console.error("Error saving document:", error);
+      alert(`Failed to save document: ${error.message}`);
     }
-    setIsEditing(false);
-    setForm(emptyDocument);
-    setEditIndex(null);
   };
 
   const handleCancel = () => {
@@ -142,6 +180,11 @@ const Documents = () => {
   };
 
   if (loading) return <div>Loading documents...</div>;
+
+  // Filter documents based on active house
+  const filteredDocuments = activeHouse === "all" 
+    ? documents 
+    : documents.filter(doc => doc.house_id === activeHouse);
 
   return (
     <PageLayout title="Documents">
@@ -165,6 +208,21 @@ const Documents = () => {
           <Plus className="mr-2 h-4 w-4" /> Upload Document
         </Button>
       </div>
+      
+      {/* House Tabs */}
+      <Tabs value={activeHouse} onValueChange={setActiveHouse} className="mb-6">
+        <TabsList className="mb-4 flex flex-wrap">
+          <TabsTrigger value="all" className="flex items-center">
+            <Home className="mr-2 h-4 w-4" /> All Properties
+          </TabsTrigger>
+          {properties.map((property) => (
+            <TabsTrigger key={property.id} value={property.id} className="flex items-center">
+              <Home className="mr-2 h-4 w-4" />
+              {property.address.split(',')[0]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {isEditing && (
         <form onSubmit={handleFormSubmit} className="mb-6 p-4 border rounded bg-gray-50">
@@ -229,9 +287,9 @@ const Documents = () => {
         </form>
       )}
 
-      {documents.length > 0 ? (
+      {filteredDocuments.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {documents.map((document, idx) => (
+          {filteredDocuments.map((document, idx) => (
             <Card key={document.id} className="relative group hover:bg-gray-50">
               <CardContent className="p-4 flex items-center">
                 <div className="p-3 bg-highlander-100 rounded-lg mr-3">
@@ -245,6 +303,13 @@ const Documents = () => {
                       {new Date(document.date).toLocaleDateString()}
                     </span>
                   </div>
+                  {activeHouse === "all" && document.house_id && (
+                    <div className="mt-1">
+                      <span className="text-xs text-highlander-600 bg-highlander-50 px-2 py-0.5 rounded-full">
+                        {properties.find(p => p.id === document.house_id)?.address.split(',')[0] || "Unknown Property"}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
@@ -275,9 +340,13 @@ const Documents = () => {
         <Card>
           <CardContent className="p-12 text-center">
             <FileText className="h-10 w-10 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No documents yet</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {activeHouse === "all" ? "No documents yet" : "No documents for this property"}
+            </h3>
             <p className="text-gray-500 mb-4">
-              Upload property-related documents to keep everything in one place
+              {activeHouse === "all" 
+                ? "Upload property-related documents to keep everything in one place" 
+                : "Upload documents for this property to keep everything organized"}
             </p>
             <Button onClick={handleAdd}>
               <Plus className="mr-2 h-4 w-4" /> Upload Document
