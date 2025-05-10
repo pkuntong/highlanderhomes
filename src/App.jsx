@@ -18,19 +18,38 @@ import Login from "./pages/Login";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-// Import admin setup utility for global access
-import './utils/setupAdmin';
+// We'll initialize the admin setup utility after React mounts
+// This prevents issues with Firebase initialization timing
+import React, { useEffect } from 'react';
+
+// Admin setup will be initialized dynamically during app startup
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SpeedInsights />
+const App = () => {
+  // Initialize setupAdmin utility after component mounts
+  useEffect(() => {
+    // Delay loading to ensure Firebase is initialized
+    setTimeout(() => {
+      try {
+        // Dynamically import the setupAdmin utility
+        import('./utils/setupAdmin')
+          .then(() => console.log('Admin utility loaded successfully'))
+          .catch(err => console.error('Error loading admin utility:', err));
+      } catch (error) {
+        console.error('Error importing setupAdmin:', error);
+      }
+    }, 2000); // 2-second delay for Firebase to initialize completely
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SpeedInsights />
         <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
@@ -55,6 +74,7 @@ const App = () => (
     </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
