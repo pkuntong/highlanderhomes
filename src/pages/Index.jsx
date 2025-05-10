@@ -1,10 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Building, Home, Users, Calendar, Wrench, BarChart3, FileText } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-highlander-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-highlander-50 to-white dark:from-gray-900 dark:to-gray-800 dark:text-white">
+      {/* Theme Toggle in Header */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
       {/* Hero Section */}
       <section className="pt-20 pb-16 px-4 text-center">
         <div className="max-w-6xl mx-auto">
@@ -13,10 +19,10 @@ const Index = () => {
             alt="Highlander Homes Logo" 
             className="w-24 h-24 mx-auto mb-6"
           />
-          <h1 className="text-4xl md:text-5xl font-bold text-highlander-800 mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-highlander-800 dark:text-white mb-4">
             Highlander Homes Property Management
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
             Streamlined property management solutions for landlords and property managers.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
@@ -35,9 +41,9 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 px-4 bg-white">
+      <section className="py-16 px-4 bg-white dark:bg-gray-800">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Powerful Property Management Tools</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 dark:text-white">Powerful Property Management Tools</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <FeatureCard 
@@ -75,19 +81,19 @@ const Index = () => {
       </section>
 
       {/* About Section */}
-      <section className="py-16 px-4 bg-gray-50">
+      <section className="py-16 px-4 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">About Highlander Homes</h2>
-          <p className="text-lg text-gray-600 mb-8">
+          <h2 className="text-3xl font-bold mb-6 dark:text-white">About Highlander Homes</h2>
+          <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
             Highlander Homes is dedicated to providing exceptional property management services. 
             Our platform is designed to streamline the property management process, giving landlords 
             and property managers the tools they need to efficiently manage their properties.
           </p>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-4">Get in Touch</h3>
-            <p className="mb-2"><strong>Phone:</strong> 240-449-4338</p>
-            <p className="mb-2"><strong>Email:</strong> <a href="mailto:highlanderhomes22@gmail.com" className="text-highlander-600 hover:underline">highlanderhomes22@gmail.com</a></p>
-            <p><strong>Highlander Homes LLC. 2025</strong></p>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-semibold mb-4 dark:text-white">Get in Touch</h3>
+            <p className="mb-2 dark:text-gray-300"><strong>Phone:</strong> 240-449-4338</p>
+            <p className="mb-2 dark:text-gray-300"><strong>Email:</strong> <a href="mailto:highlanderhomes22@gmail.com" className="text-highlander-600 hover:underline dark:text-highlander-400">highlanderhomes22@gmail.com</a></p>
+            <p className="dark:text-gray-300"><strong>Highlander Homes LLC. 2025</strong></p>
           </div>
         </div>
       </section>
@@ -97,10 +103,10 @@ const Index = () => {
 
 // Feature Card Component
 const FeatureCard = ({ icon, title, description }) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
     <div className="mb-4">{icon}</div>
-    <h3 className="text-xl font-semibold mb-2">{title}</h3>
-    <p className="text-gray-600">{description}</p>
+    <h3 className="text-xl font-semibold mb-2 dark:text-white">{title}</h3>
+    <p className="text-gray-600 dark:text-gray-300">{description}</p>
   </div>
 );
 

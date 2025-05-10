@@ -21,6 +21,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 // We'll initialize the admin setup utility after React mounts
 // This prevents issues with Firebase initialization timing
 import React, { useEffect } from 'react';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Admin setup will be initialized dynamically during app startup
 
@@ -44,10 +45,11 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+      <ThemeProvider>
+        <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
         <BrowserRouter>
           <SpeedInsights />
         <Routes>
@@ -73,6 +75,7 @@ const App = () => {
       </BrowserRouter>
     </TooltipProvider>
     </AuthProvider>
+      </ThemeProvider>
   </QueryClientProvider>
   );
 };

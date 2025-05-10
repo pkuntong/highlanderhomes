@@ -3,6 +3,7 @@ import { Bell, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Header = ({ title }) => {
   const navigate = useNavigate();
@@ -28,6 +29,9 @@ const Header = ({ title }) => {
       <div className="flex h-16 items-center px-4 md:px-6">
         <h1 className="text-lg font-semibold truncate ml-14 sm:ml-8 lg:ml-0">{title}</h1>
         <div className="ml-auto flex items-center space-x-2 md:space-x-4">
+          {/* Theme Toggle Button */}
+          <ThemeToggle />
+
           <Button
             variant="ghost"
             size="icon"
