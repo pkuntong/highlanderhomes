@@ -3,19 +3,26 @@ import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Edit, Trash2, Eye, Home } from "lucide-react";
-import { db } from "@/firebase";
+import { FileText, Plus, Edit, Trash2, Eye, Home, Lock, Shield } from "lucide-react";
+import { db, storage, auth } from "@/firebase";
 import {
   collection,
   getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
-  doc
+  doc,
+  query,
+  where,
+  getDoc
 } from "firebase/firestore";
 import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/contexts/AuthContext";
+import { uploadSecureFile, deleteSecureFile, addSecureDocument, updateSecureDocument } from "@/utils/secureStorage";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Simple Modal component
 function Modal({ open, onClose, children }) {
@@ -41,6 +48,7 @@ const CATEGORY_OPTIONS = [
 const emptyDocument = { name: '', type: '', date: '', fileBase64: '', house_id: '', category: '', fileName: '', fileType: '' };
 
 const Documents = () => {
+  const { currentUser, isAuthenticated } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -50,20 +58,39 @@ const Documents = () => {
   const [modalDoc, setModalDoc] = useState(null);
   const [properties, setProperties] = useState([]);
   const [activeHouse, setActiveHouse] = useState("all");
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [error, setError] = useState(null);
 
-  // Fetch documents from Firestore on mount
+  // Fetch documents from Firestore on mount with security checks
   useEffect(() => {
     async function fetchDocuments() {
+      if (!isAuthenticated) {
+        setDocuments([]);
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
-      const querySnapshot = await getDocs(collection(db, "documents"));
-      const docsData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      setDocuments(docsData);
-      setLoading(false);
+      setError(null);
+      
+      try {
+        // Get all documents the user has access to
+        const querySnapshot = await getDocs(collection(db, "documents"));
+        const docsData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        setDocuments(docsData);
+      } catch (err) {
+        console.error("Error fetching documents:", err);
+        setError("Failed to load documents. Please try again.");
+        setDocuments([]);
+      } finally {
+        setLoading(false);
+      }
     }
+    
     fetchDocuments();
     // Expose fetchDocuments for later use
     Documents.fetchDocuments = fetchDocuments;
-  }, []);
+  }, [isAuthenticated]);
 
   // Fetch properties for house dropdown
   useEffect(() => {
@@ -82,9 +109,22 @@ const Documents = () => {
 
   const handleDelete = async (index) => {
     if (window.confirm("Are you sure you want to delete this document?")) {
-      const document = documents[index];
-      await deleteDoc(doc(db, "documents", document.id));
-      await Documents.fetchDocuments();
+      try {
+        setError(null);
+        const document = documents[index];
+        
+        // If the document has an associated file in storage, delete that first
+        if (document.filePath) {
+          await deleteSecureFile(document.filePath);
+        }
+        
+        // Then delete the document record from Firestore
+        await deleteDoc(doc(db, "documents", document.id));
+        await Documents.fetchDocuments();
+      } catch (err) {
+        console.error("Error deleting document:", err);
+        setError("Failed to delete document: " + err.message);
+      }
     }
   };
 
@@ -102,37 +142,39 @@ const Documents = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size - Firestore has a 1MB limit for document size
-      if (file.size > 900000) { // ~900KB to leave room for other document data
-        alert("File is too large. Please upload a file smaller than 900KB or use a file storage service instead.");
-        return;
-      }
+      // Set basic file information in the form
+      setForm((prev) => ({ 
+        ...prev, 
+        fileName: file.name, 
+        fileType: file.type,
+        fileSize: file.size,
+        fileObj: file // Store the file object for later secure upload
+      }));
       
-      // For small files, we can store them directly in Firestore
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, fileBase64: reader.result, fileName: file.name, fileType: file.type }));
-      };
-      reader.readAsDataURL(file);
+      // Add a file preview if it's an image
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setForm((prev) => ({ ...prev, filePreview: reader.result }));
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     try {
+      setError(null);
+      setUploadProgress(0);
+      
       // Validate form data
       if (!form.name || !form.date || !form.house_id) {
-        alert("Please fill in all required fields");
+        setError("Please fill in all required fields");
         return;
       }
       
-      // Check if file is too large for Firestore
-      if (form.fileBase64 && form.fileBase64.length > 900000) {
-        alert("File is too large for storage. Please use a smaller file (less than 900KB).");
-        return;
-      }
-      
-      // Prepare document data
+      // Prepare base document data without file
       const docData = {
         name: form.name,
         type: form.type || form.fileType || '',
@@ -140,26 +182,69 @@ const Documents = () => {
         house_id: form.house_id,
         category: form.category || '',
         fileName: form.fileName || '',
-        fileType: form.fileType || '',
-        fileBase64: form.fileBase64 || ''
+        fileType: form.fileType || ''
       };
       
-      if (editIndex !== null) {
-        // Update
-        const documentRef = doc(db, "documents", documents[editIndex].id);
-        await updateDoc(documentRef, docData);
-      } else {
-        // Add new document
-        await addDoc(collection(db, "documents"), docData);
+      // Handle file upload if there's a file
+      let fileData = {};
+      if (form.fileObj) {
+        try {
+          setUploadProgress(10);
+          // Upload file to secure storage
+          const fileInfo = await uploadSecureFile(
+            form.fileObj, 
+            'documents', 
+            { house_id: form.house_id, category: form.category }
+          );
+          setUploadProgress(70);
+          
+          // Add file details to document data
+          fileData = {
+            fileUrl: fileInfo.url,
+            filePath: fileInfo.path,
+            fileName: fileInfo.name,
+            fileType: fileInfo.type,
+            fileSize: fileInfo.size
+          };
+        } catch (fileError) {
+          console.error("Error uploading file:", fileError);
+          setError("Failed to upload file: " + fileError.message);
+          return;
+        }
       }
       
+      setUploadProgress(80);
+      
+      // Combine document data with file data
+      const completeDocData = { ...docData, ...fileData };
+      
+      if (editIndex !== null) {
+        // If updating an existing document
+        const documentId = documents[editIndex].id;
+        const currentDoc = documents[editIndex];
+        
+        // If changing files, delete the old file first
+        if (form.fileObj && currentDoc.filePath) {
+          await deleteSecureFile(currentDoc.filePath);
+        }
+        
+        // Update document
+        await updateSecureDocument(documentId, completeDocData);
+      } else {
+        // Add new document with security metadata
+        await addSecureDocument(completeDocData);
+      }
+      
+      setUploadProgress(100);
       await Documents.fetchDocuments();
       setIsEditing(false);
       setForm(emptyDocument);
       setEditIndex(null);
+      setUploadProgress(null);
     } catch (error) {
       console.error("Error saving document:", error);
-      alert(`Failed to save document: ${error.message}`);
+      setError(`Failed to save document: ${error.message}`);
+      setUploadProgress(null);
     }
   };
 
@@ -189,15 +274,54 @@ const Documents = () => {
   return (
     <PageLayout title="Documents">
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        {modalDoc && modalDoc.fileBase64 && (
+        {modalDoc && (
           <div>
-            <h2 className="text-lg font-semibold mb-4">{modalDoc.name}</h2>
-            {modalDoc.type.toLowerCase().includes('pdf') ? (
-              <iframe src={modalDoc.fileBase64} title={modalDoc.name} className="w-full h-96 border rounded" />
-            ) : modalDoc.type.toLowerCase().match(/jpg|jpeg|png|gif|bmp|webp/) ? (
-              <img src={modalDoc.fileBase64} alt={modalDoc.name} className="max-h-96 mx-auto" />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">{modalDoc.name}</h2>
+              {modalDoc.createdBy && modalDoc.createdAt && (
+                <div className="text-xs text-gray-500 flex items-center">
+                  <Shield className="h-3 w-3 mr-1" />
+                  <span>
+                    Added {new Date(modalDoc.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {modalDoc.fileUrl ? (
+              <>
+                {modalDoc.fileType?.toLowerCase().includes('pdf') ? (
+                  <iframe src={modalDoc.fileUrl} title={modalDoc.name} className="w-full h-96 border rounded" />
+                ) : modalDoc.fileType?.toLowerCase().match(/jpg|jpeg|png|gif|bmp|webp/) ? (
+                  <img src={modalDoc.fileUrl} alt={modalDoc.name} className="max-h-96 mx-auto" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 border rounded bg-gray-50">
+                    <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                    <p className="text-center text-gray-600 mb-2">Preview not available for this file type</p>
+                    <a
+                      href={modalDoc.fileUrl}
+                      download={modalDoc.fileName || modalDoc.name}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-highlander-600 hover:bg-highlander-700"
+                    >
+                      Download File
+                    </a>
+                  </div>
+                )}
+              </>
+            ) : modalDoc.fileBase64 ? (
+              <>
+                {modalDoc.fileType?.toLowerCase().includes('pdf') ? (
+                  <iframe src={modalDoc.fileBase64} title={modalDoc.name} className="w-full h-96 border rounded" />
+                ) : modalDoc.fileType?.toLowerCase().match(/jpg|jpeg|png|gif|bmp|webp/) ? (
+                  <img src={modalDoc.fileBase64} alt={modalDoc.name} className="max-h-96 mx-auto" />
+                ) : (
+                  <div className="text-gray-500">Preview not available for this file type.</div>
+                )}
+              </>
             ) : (
-              <div className="text-gray-500">Preview not available for this file type.</div>
+              <div className="text-gray-500">No file attached to this document.</div>
             )}
           </div>
         )}
@@ -208,6 +332,26 @@ const Documents = () => {
           <Plus className="mr-2 h-4 w-4" /> Upload Document
         </Button>
       </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      {uploadProgress !== null && (
+        <div className="w-full mb-4">
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div 
+              className="bg-highlander-600 h-2.5 rounded-full" 
+              style={{ width: `${uploadProgress}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            {uploadProgress < 100 ? `Uploading document... ${uploadProgress}%` : 'Upload complete!'}
+          </p>
+        </div>
+      )}
       
       {/* House Tabs */}
       <Tabs value={activeHouse} onValueChange={setActiveHouse} className="mb-6">
@@ -292,13 +436,30 @@ const Documents = () => {
           {filteredDocuments.map((document, idx) => (
             <Card key={document.id} className="relative group hover:bg-gray-50">
               <CardContent className="p-4 flex items-center">
-                <div className="p-3 bg-highlander-100 rounded-lg mr-3">
+                <div className="p-3 bg-highlander-100 rounded-lg mr-3 relative">
                   <FileText className="h-6 w-6 text-highlander-700" />
+                  {document.filePath && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="absolute -top-1 -right-1 bg-green-100 rounded-full p-0.5">
+                            <Lock className="h-3 w-3 text-green-600" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Securely stored file</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
                 <div className="flex-1">
                   <h3 className="font-medium text-sm">{document.name}</h3>
                   <div className="flex justify-between mt-1">
-                    <span className="text-xs text-gray-500">{document.type}</span>
+                    <span className="text-xs text-gray-500">
+                      {document.fileType || document.type}
+                      {document.fileSize && ` (${(document.fileSize / 1024).toFixed(0)} KB)`}
+                    </span>
                     <span className="text-xs text-gray-500">
                       {new Date(document.date).toLocaleDateString()}
                     </span>
@@ -310,25 +471,48 @@ const Documents = () => {
                       </span>
                     </div>
                   )}
+                  {document.createdAt && (
+                    <div className="mt-1 flex items-center">
+                      <Shield className="h-3 w-3 mr-1 text-gray-400" />
+                      <span className="text-xs text-gray-400">
+                        Added {new Date(document.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
                   <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
-                  {document.fileBase64 && (
+                  
+                  {(document.fileUrl || document.fileBase64) && (
                     <>
                       <Button size="icon" variant="outline" onClick={() => handleView(document)} title="View">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <a
-                        href={document.fileBase64}
-                        download={document.name || 'document'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button size="icon" variant="outline" asChild>
-                          <span title="Download"><FileText className="h-4 w-4" /></span>
-                        </Button>
-                      </a>
+                      
+                      {document.fileUrl ? (
+                        <a
+                          href={document.fileUrl}
+                          download={document.fileName || document.name || 'document'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button size="icon" variant="outline" asChild>
+                            <span title="Download"><FileText className="h-4 w-4" /></span>
+                          </Button>
+                        </a>
+                      ) : document.fileBase64 && (
+                        <a
+                          href={document.fileBase64}
+                          download={document.fileName || document.name || 'document'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button size="icon" variant="outline" asChild>
+                            <span title="Download"><FileText className="h-4 w-4" /></span>
+                          </Button>
+                        </a>
+                      )}
                     </>
                   )}
                 </div>

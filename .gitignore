@@ -7,10 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies and build
 node_modules
 dist
 dist-ssr
 *.local
+
+# Environment variables - SENSITIVE INFORMATION
+.env
+.env.*
+!.env.example
+
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +34,10 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Temporary files
+.temp
+.tmp
+
+# Coverage reports
+coverage

@@ -18,6 +18,8 @@ import Login from "./pages/Login";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+// Import admin setup utility for global access
+import './utils/setupAdmin';
 
 const queryClient = new QueryClient();
 

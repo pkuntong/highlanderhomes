@@ -1,45 +1,97 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  sendPasswordResetEmail
+} from "firebase/auth";
+import { auth } from "@/firebase";
 
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const login = (email, password) => {
-    const storedPassword = localStorage.getItem("highlanderhomes_password") || "highlander2025";
-    if (email === "highlanderhomes22@gmail.com" && password === storedPassword) {
-      setIsAuthenticated(true);
-      localStorage.setItem("isAuthenticated", "true");
-      return true;
-    } else {
-      alert("Invalid email or password.");
-      return false;
-    }
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem("isAuthenticated");
-  };
-
-  // Check if user was previously authenticated
-  useEffect(() => {
+  // Sign up function for creating new users
+  const signup = async (email, password) => {
     try {
-    const storedAuth = localStorage.getItem("isAuthenticated");
-    if (storedAuth === "true") {
-      setIsAuthenticated(true);
-      }
+      return await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      // Handle potential errors from localStorage access if necessary
-      console.error("Error reading auth state from localStorage", error);
-    } finally {
-      setLoading(false);
+      console.error("Error signing up:", error);
+      throw error;
     }
+  };
+
+  // Login function using Firebase Authentication
+  const login = async (email, password) => {
+    try {
+      // Now using Firebase Authentication primarily
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log("Firebase login successful");
+      return true;
+    } catch (error) {
+      console.error("Error logging in:", error);
+      throw error;
+    }
+  };
+
+  // Logout function handling both auth methods
+  const logout = async () => {
+    try {
+      // Always clear localStorage auth state for legacy method
+      localStorage.removeItem("isAuthenticated");
+      
+      // Also sign out of Firebase if possible
+      try {
+        await signOut(auth);
+      } catch (error) {
+        // Ignore Firebase signOut errors since we might not be using it
+        console.log("Firebase signOut not possible, but continuing");
+      }
+      
+      // Always reset current user state regardless of auth method
+      setCurrentUser(null);
+    } catch (error) {
+      console.error("Error logging out:", error);
+      throw error;
+    }
+  };
+
+  // Password reset function
+  const resetPassword = async (email) => {
+    try {
+      return await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      throw error;
+    }
+  };
+  
+  // Listen for authentication state changes using Firebase
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+    
+    // Cleanup subscription on unmount
+    return unsubscribe;
   }, []);
 
+  const value = {
+    currentUser,
+    isAuthenticated: !!currentUser,
+    login,
+    logout,
+    signup,
+    resetPassword,
+    loading
+  };
+  
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
@@ -51,4 +103,4 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-} 
+}
