@@ -52,16 +52,95 @@ const Properties = () => {
   const [form, setForm] = useState(emptyProperty);
   const [deleteErrorIndex, setDeleteErrorIndex] = useState(null);
 
+  // Function to remove duplicate properties with the same address
+  const cleanupDuplicateProperties = async () => {
+    console.log('Running duplicate property cleanup...');
+    try {
+      // Get all properties from Firestore
+      const querySnapshot = await getDocs(collection(db, "properties"));
+      
+      // Group properties by address to find duplicates
+      const addressMap = {};
+      const duplicates = [];
+      
+      querySnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const address = data.address;
+        
+        if (address) {
+          // If we've seen this address before, we have a duplicate
+          if (addressMap[address]) {
+            // Keep the one with the more recent lastUpdated timestamp
+            const existing = addressMap[address];
+            const existingTimestamp = existing.data.lastUpdated || '1900-01-01';
+            const currentTimestamp = data.lastUpdated || '1900-01-01';
+            
+            if (currentTimestamp > existingTimestamp) {
+              // This one is newer, so the existing one is the duplicate
+              duplicates.push(existing.id);
+              addressMap[address] = { id, data };
+            } else {
+              // Existing one is newer, so this is the duplicate
+              duplicates.push(id);
+            }
+          } else {
+            // First time seeing this address
+            addressMap[address] = { id, data };
+          }
+        }
+      });
+      
+      // Delete duplicates
+      if (duplicates.length > 0) {
+        console.log(`Found ${duplicates.length} duplicate properties to clean up:`);
+        console.log(duplicates);
+        
+        for (const dupId of duplicates) {
+          console.log(`Deleting duplicate property ${dupId}`);
+          await deleteDoc(doc(db, "properties", dupId));
+        }
+        
+        return true; // Return true if we cleaned up something
+      } else {
+        console.log('No duplicate properties found.');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error cleaning up duplicate properties:', error);
+      return false;
+    }
+  };
+  
   // Fetch properties from Firestore on mount
   useEffect(() => {
     async function fetchProperties() {
       setLoading(true);
-      const querySnapshot = await getDocs(collection(db, "properties"));
-      const props = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      setProperties(props);
-      setLoading(false);
+      console.log('Fetching latest properties data from Firestore...');
+      try {
+        // Force a fresh query from Firestore
+        const querySnapshot = await getDocs(collection(db, "properties"));
+        
+        // Process the results
+        const props = querySnapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          return { id: docSnap.id, ...data };
+        });
+        
+        console.log('Fetched', props.length, 'properties:', props);
+        
+        // Update state with fresh data
+        setProperties(props);
+        console.log('Properties state updated');
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+      } finally {
+        setLoading(false);
+      }
     }
+    
     fetchProperties();
+    
     // Expose fetchProperties for later use
     Properties.fetchProperties = fetchProperties;
   }, []);
@@ -80,8 +159,29 @@ const Properties = () => {
   });
 
   const handleEdit = (index) => {
-    setEditIndex(index);
-    setForm(properties[index]);
+    // Use the filtered list to get the property
+    const property = filteredProperties[index];
+    
+    if (!property || !property.id) {
+      alert('Error: Cannot edit this property - missing ID');
+      return;
+    }
+    
+    console.log('EDITING PROPERTY:', property);
+    console.log('WITH ID:', property.id);
+    
+    // Store BOTH the property ID and the index
+    setEditIndex({
+      index: index,
+      propertyId: property.id  // Store the actual ID explicitly
+    });
+    
+    // Make a clean copy and ensure ID is included
+    setForm({
+      ...property,
+      id: property.id  // Make absolutely sure ID is included
+    });
+    
     setIsEditing(true);
   };
 
@@ -131,28 +231,125 @@ const Properties = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    
+    // Create a timestamp to track this specific update
+    const updateTimestamp = new Date().toISOString();
+    
     if (editIndex !== null) {
-      // Update
-      const property = properties[editIndex];
-      const propertyRef = doc(db, "properties", property.id);
+      // Since we changed editIndex to store both index and ID, we need to extract the propertyId
+      const propertyId = editIndex.propertyId || form.id;
+      
+      console.log('=========== PROPERTY UPDATE ==========');
+      console.log('Property ID from editIndex:', editIndex.propertyId);
+      console.log('Property ID from form:', form.id);
+      console.log('Using Property ID:', propertyId);
+      console.log('Form data:', form);
+      
+      // Extra verification of the ID
+      if (!propertyId) {
+        console.error('CRITICAL ERROR: Missing property ID for update!');
+        alert('Cannot update property: Missing ID. Please try refreshing the page and try again.');
+        return;
+      }
+      
+      // Create reference to the EXACT document
+      const propertyRef = doc(db, "properties", propertyId);
+      
+      // Add a timestamp to the form data for tracking this update
+      const updatedForm = {
+        ...form,
+        lastUpdated: updateTimestamp,
+      };
+      
       try {
-        // First import the required functions at the top of the file
-        // Check if document exists first
+        console.log(`[${updateTimestamp}] Attempting to update property with ID:`, propertyId);
+        console.log(`[${updateTimestamp}] Property data for update:`, updatedForm);
+        
+        // First, attempt to get the current document
         const docSnapshot = await getDoc(propertyRef);
-        if (!docSnapshot.exists()) {
-          // Document doesn't exist, create it instead
-          console.log("Property document doesn't exist, creating instead of updating");
-          await setDoc(propertyRef, form);
-        } else {
-          // Document exists, update it
-          await updateDoc(propertyRef, form);
+        const exists = docSnapshot.exists();
+        console.log(`[${updateTimestamp}] Document exists check:`, exists);
+        
+        // DIRECT APPROACH: First delete if exists, then set exactly what we want
+        // This prevents any possibility of duplication
+        try {
+          if (docSnapshot.exists()) {
+            console.log(`[${updateTimestamp}] Document exists, updating directly with ID: ${propertyId}`);
+            
+            // Use direct update without merge option - this is most reliable
+            await updateDoc(propertyRef, updatedForm);
+          } else {
+            console.log(`[${updateTimestamp}] Document doesn't exist, creating with ID: ${propertyId}`);
+            
+            // Create the document with EXPLICIT ID
+            await setDoc(propertyRef, {
+              ...updatedForm,
+              id: propertyId,  // Ensure ID is consistent
+            });
+          }
+          console.log(`[${updateTimestamp}] Document operation completed successfully`);
+        } catch (opError) {
+          console.error(`[${updateTimestamp}] Error during document operation:`, opError);
+          throw opError; // Rethrow to be caught by outer catch
         }
+        
+        // Verify the update by fetching fresh data
+        const verifySnapshot = await getDoc(propertyRef);
+        if (verifySnapshot.exists()) {
+          const savedData = verifySnapshot.data();
+          console.log(`[${updateTimestamp}] Verification - Property saved with data:`, savedData);
+          
+          // Check if our timestamp made it into the saved data
+          if (savedData.lastUpdated === updateTimestamp) {
+            console.log(`[${updateTimestamp}] Success: Timestamp verification confirmed update`);
+          } else {
+            console.warn(`[${updateTimestamp}] Warning: Saved data doesn't contain our timestamp`);
+          }
+        } else {
+          console.error(`[${updateTimestamp}] Error: Property still not found after save attempt!`);
+        }
+        
+        // Refresh the properties list from Firestore
+        console.log(`[${updateTimestamp}] Refreshing properties list from Firestore...`);
         await Properties.fetchProperties();
+        
+        // Also update the local state directly to ensure UI reflects changes
+        setProperties(prevProps => {
+          // Make a deep copy of the previous properties array
+          const updatedProps = [...prevProps];
+          
+          // Find the property by ID (more reliable than index)
+          const propIndex = updatedProps.findIndex(p => p.id === propertyId);
+          
+          if (propIndex >= 0) {
+            // Replace with our updated data plus the ID
+            updatedProps[propIndex] = { ...updatedForm, id: propertyId };
+            console.log(`[${updateTimestamp}] Updated property at index ${propIndex} in local state`);
+          } else {
+            // If not found, add as a new item
+            updatedProps.push({ ...updatedForm, id: propertyId });
+            console.log(`[${updateTimestamp}] Added property to local state as it wasn't found`);
+          }
+          
+          return updatedProps;
+        });
+        
+        // Run the duplicate cleanup to fix any duplicate properties
+        console.log(`[${updateTimestamp}] Running duplicate cleanup...`);
+        const cleanupResult = await cleanupDuplicateProperties();
+        if (cleanupResult) {
+          console.log(`[${updateTimestamp}] Cleanup removed duplicate properties`);
+        }
+        
+        // Show success message
+        alert(`Property updated successfully!`);
+        
+        // Reset the form state
         setIsEditing(false);
         setForm(emptyProperty);
         setEditIndex(null);
       } catch (error) {
-        console.error("Error updating property:", error);
+        console.error(`[${updateTimestamp}] Error updating property:`, error);
         alert(`Failed to update property: ${error.message}. Please try again.`);
       }
     } else {
@@ -206,8 +403,12 @@ const Properties = () => {
         </div>
 
         <div className="flex gap-2 md:self-end">
-          <Button variant="outline" onClick={() => Properties.fetchProperties()}>
-            Refresh Properties
+          <Button variant="outline" onClick={async () => {
+            await cleanupDuplicateProperties();
+            await Properties.fetchProperties();
+            alert('Properties refreshed and duplicates removed');
+          }}>
+            Refresh & Clean Properties
           </Button>
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" /> Add Property
