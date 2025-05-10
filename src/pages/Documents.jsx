@@ -14,6 +14,7 @@ import {
   doc
 } from "firebase/firestore";
 import React from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Simple Modal component
 function Modal({ open, onClose, children }) {
@@ -28,7 +29,15 @@ function Modal({ open, onClose, children }) {
   );
 }
 
-const emptyDocument = { id: '', name: '', type: '', date: '', fileBase64: '' };
+const CATEGORY_OPTIONS = [
+  "Legal Document",
+  "Inspection Report",
+  "Floorplan",
+  "Insurance",
+  "Other"
+];
+
+const emptyDocument = { id: '', name: '', type: '', date: '', fileBase64: '', house_id: '', category: '' };
 
 const Documents = () => {
   const [documents, setDocuments] = useState([]);
@@ -38,6 +47,7 @@ const Documents = () => {
   const [form, setForm] = useState(emptyDocument);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDoc, setModalDoc] = useState(null);
+  const [properties, setProperties] = useState([]);
 
   // Fetch documents from Firestore on mount
   useEffect(() => {
@@ -51,6 +61,15 @@ const Documents = () => {
     fetchDocuments();
     // Expose fetchDocuments for later use
     Documents.fetchDocuments = fetchDocuments;
+  }, []);
+
+  // Fetch properties for house dropdown
+  useEffect(() => {
+    async function fetchProperties() {
+      const querySnapshot = await getDocs(collection(db, "properties"));
+      setProperties(querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+    }
+    fetchProperties();
   }, []);
 
   const handleEdit = (index) => {
@@ -155,8 +174,41 @@ const Documents = () => {
               <Input name="name" id="name" value={form.name} onChange={handleFormChange} placeholder="Document Name" required />
             </div>
             <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="house_id">Property</label>
+              <select
+                name="house_id"
+                id="house_id"
+                value={form.house_id}
+                onChange={handleFormChange}
+                className="border rounded px-2 py-1 w-full"
+                required
+              >
+                <option value="">Select Property</option>
+                {properties.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.address} {property.city ? `(${property.city})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-1" htmlFor="type">Type</label>
               <Input name="type" id="type" value={form.type} onChange={handleFormChange} placeholder="Type (PDF, DOCX, etc.)" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="category">Category</label>
+              <select
+                name="category"
+                id="category"
+                value={form.category}
+                onChange={handleFormChange}
+                className="border rounded px-2 py-1 w-full"
+              >
+                <option value="">Select Category</option>
+                {CATEGORY_OPTIONS.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="date">Date</label>
