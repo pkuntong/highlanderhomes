@@ -13,6 +13,7 @@ import Reminders from "./pages/Reminders";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import Tenants from "./pages/Tenants";
+import RentTracking from "./pages/RentTracking";
 import MaintenanceRequests from "./pages/MaintenanceRequests";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -23,6 +24,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 // This prevents issues with Firebase initialization timing
 import React, { useEffect } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SwipeNavigation } from './components/ui/swipe-navigation';
 
 // Admin setup will be initialized dynamically during app startup
 
@@ -42,6 +44,19 @@ const App = () => {
         console.error('Error importing setupAdmin:', error);
       }
     }, 2000); // 2-second delay for Firebase to initialize completely
+
+    // Register PWA service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
   }, []);
 
   return (
@@ -60,15 +75,16 @@ const App = () => {
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/documents" element={<Documents />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/reminders" element={<Reminders />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/tenants" element={<Tenants />} />
-              <Route path="/maintenance" element={<MaintenanceRequests />} />
+              <Route path="/dashboard" element={<SwipeNavigation><Dashboard /></SwipeNavigation>} />
+              <Route path="/properties" element={<SwipeNavigation><Properties /></SwipeNavigation>} />
+              <Route path="/documents" element={<SwipeNavigation><Documents /></SwipeNavigation>} />
+              <Route path="/calendar" element={<SwipeNavigation><Calendar /></SwipeNavigation>} />
+              <Route path="/reminders" element={<SwipeNavigation><Reminders /></SwipeNavigation>} />
+              <Route path="/analytics" element={<SwipeNavigation><Analytics /></SwipeNavigation>} />
+              <Route path="/profile" element={<SwipeNavigation><Profile /></SwipeNavigation>} />
+              <Route path="/tenants" element={<SwipeNavigation><Tenants /></SwipeNavigation>} />
+              <Route path="/rent-tracking" element={<SwipeNavigation><RentTracking /></SwipeNavigation>} />
+              <Route path="/maintenance" element={<SwipeNavigation><MaintenanceRequests /></SwipeNavigation>} />
             </Route>
 
             {/* Catch all route */}

@@ -1,58 +1,145 @@
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { InteractiveCard, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MapPin, Bed, Bath, Square, DollarSign } from "lucide-react";
+import { useState } from "react";
 
 const PropertyCard = ({ property }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   const getStatusColor = (status) => {
     switch (status) {
       case "occupied":
-        return "bg-green-100 text-green-800";
+        return "bg-accent-emerald/20 text-accent-emerald border-accent-emerald/30";
       case "vacant":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-accent-gold/20 text-accent-gold border-accent-gold/30";
       case "maintenance":
-        return "bg-red-100 text-red-800";
+        return "bg-destructive/20 text-destructive border-destructive/30";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-muted text-foreground-muted border-border";
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "occupied":
+        return "🏡";
+      case "vacant":
+        return "🔑";
+      case "maintenance":
+        return "🔧";
+      default:
+        return "🏠";
     }
   };
 
   return (
-    <Card className="overflow-hidden">
-      <div className="h-40 bg-gray-200">
-        <img 
-          src={property.imageBase64 || property.imageUrl} 
-          alt={property.address || "Property image"} 
-          className="h-full w-full object-cover"
-        />
-      </div>
-      <CardContent className="pt-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-medium text-lg">{property.address || "Unknown Address"}</h3>
-          <Badge className={getStatusColor(property.status)}>
+    <InteractiveCard 
+      className="group overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Property Image */}
+      <div className="relative h-48 bg-gradient-to-br from-muted to-muted-foreground/10 overflow-hidden">
+        {property.imageBase64 || property.imageUrl ? (
+          <img 
+            src={property.imageBase64 || property.imageUrl} 
+            alt={property.address || "Property image"} 
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-6xl text-foreground-muted">
+            🏠
+          </div>
+        )}
+        
+        {/* Status Badge */}
+        <div className="absolute top-4 right-4">
+          <Badge className={`${getStatusColor(property.status)} border backdrop-blur-sm font-medium`}>
+            <span className="mr-1">{getStatusIcon(property.status)}</span>
             {property.status ? property.status.charAt(0).toUpperCase() + property.status.slice(1) : "Unknown"}
           </Badge>
         </div>
-        <p className="text-sm text-gray-600">
-          {property.city || ""}, {property.state || ""} {property.zipCode || ""}
-        </p>
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <div>
-            <span className="font-medium">{property.bedrooms ?? 0}</span> beds
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      </div>
+
+      <CardContent className="p-6 space-y-4">
+        {/* Property Address */}
+        <div className="space-y-2">
+          <h3 className="text-xl font-bold text-premium line-clamp-1">
+            {property.address || "Unknown Address"}
+          </h3>
+          <div className="flex items-center text-foreground-muted">
+            <MapPin size={14} className="mr-1.5" />
+            <p className="text-sm">
+              {[property.city, property.state, property.zipCode].filter(Boolean).join(", ") || "Location not specified"}
+            </p>
           </div>
-          <div>
-            <span className="font-medium">{property.fullBathrooms ?? 0}</span> full baths
+        </div>
+
+        {/* Property Details */}
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary-50">
+              <Bed size={16} className="text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-premium">{property.bedrooms ?? 0}</p>
+              <p className="text-xs text-foreground-muted">Bedrooms</p>
+            </div>
           </div>
-          <div>
-            <span className="font-medium">{property.halfBathrooms ?? 0}</span> half baths
+          
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-emerald/10">
+              <Bath size={16} className="text-accent-emerald" />
+            </div>
+            <div>
+              <p className="font-semibold text-premium">{(property.fullBathrooms ?? 0) + (property.halfBathrooms ?? 0)}</p>
+              <p className="text-xs text-foreground-muted">Bathrooms</p>
+            </div>
           </div>
-          <div>
-            <span className="font-medium">{typeof property.squareFootage === 'number' ? property.squareFootage.toLocaleString() : ''}</span> sqft
+          
+          <div className="flex items-center space-x-2 col-span-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-gold/10">
+              <Square size={16} className="text-accent-gold" />
+            </div>
+            <div>
+              <p className="font-semibold text-premium">
+                {typeof property.squareFootage === 'number' ? property.squareFootage.toLocaleString() : 'N/A'}
+              </p>
+              <p className="text-xs text-foreground-muted">Square Feet</p>
+            </div>
           </div>
         </div>
       </CardContent>
-      <CardFooter className="border-t border-gray-100 bg-gray-50 px-4 py-3">
-        <p className="font-medium text-highlander-700">${typeof property.monthlyRent === 'number' ? property.monthlyRent.toLocaleString() : 0}/month</p>
+
+      {/* Premium Footer */}
+      <CardFooter className="border-t border-border-subtle bg-gradient-to-r from-background-elevated to-background p-6">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-600">
+              <DollarSign size={18} className="text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-premium">
+                ${typeof property.monthlyRent === 'number' ? property.monthlyRent.toLocaleString() : 0}
+              </p>
+              <p className="text-xs text-foreground-muted">per month</p>
+            </div>
+          </div>
+          
+          <div className={`transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+            <div className="text-right">
+              <p className="text-sm font-medium text-accent-emerald">
+                ${(typeof property.monthlyRent === 'number' ? property.monthlyRent * 12 : 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-foreground-muted">annual</p>
+            </div>
+          </div>
+        </div>
       </CardFooter>
-    </Card>
+    </InteractiveCard>
   );
 };
 

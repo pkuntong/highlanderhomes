@@ -3,10 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/HH Logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Enhanced Mobile Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <!-- PWA and Mobile App Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Highlander Homes" />
+    <meta name="application-name" content="Highlander Homes" />
+    <meta name="msapplication-TileColor" content="#1e40af" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="theme-color" content="#1e40af" />
+    
+    <!-- SEO and Social Meta Tags -->
     <title>Highlander Homes | Property Management System</title>
-    <meta name="description" content="Property Management System for Landlords" />
+    <meta name="description" content="Complete property management system for landlords and property managers. Manage properties, tenants, rent tracking, and maintenance requests." />
     <meta name="author" content="Highlander Homes" />
+    <meta name="keywords" content="property management, landlord, tenant, rent tracking, maintenance, real estate" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://highlanderhomes.com/" />
+    <meta property="og:title" content="Highlander Homes | Property Management System" />
+    <meta property="og:description" content="Complete property management system for landlords and property managers" />
+    <meta property="og:image" content="/HH Logo.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://highlanderhomes.com/" />
+    <meta property="twitter:title" content="Highlander Homes | Property Management System" />
+    <meta property="twitter:description" content="Complete property management system for landlords and property managers" />
+    <meta property="twitter:image" content="/HH Logo.png" />
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/HH Logo.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/HH Logo.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preload Critical Resources -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+    <link rel="preconnect" href="https://firebase.googleapis.com" />
+    <link rel="dns-prefetch" href="https://storage.googleapis.com" />
     
     <!-- Embed Firebase configuration directly in HTML to ensure it's always available -->
     <script>

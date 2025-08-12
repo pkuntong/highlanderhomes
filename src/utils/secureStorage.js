@@ -15,6 +15,12 @@ export const uploadSecureFile = async (file, path, metadata = {}) => {
     throw new Error('Authentication required to upload files');
   }
   
+  // Check file size limit (100MB)
+  const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+  if (file.size > maxSize) {
+    throw new Error(`File size too large. Maximum allowed size is 100MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+  }
+  
   // Generate a unique file path with user ID to maintain isolation
   const userId = auth.currentUser.uid;
   const timestamp = new Date().getTime();
@@ -30,24 +36,40 @@ export const uploadSecureFile = async (file, path, metadata = {}) => {
       ...metadata,
       uploadedBy: userId,
       uploadedAt: new Date().toISOString(),
-      originalName: file.name
+      originalName: file.name,
+      fileSize: file.size.toString()
     }
   };
   
-  // Upload the file
-  await uploadBytes(storageRef, file, secureMetadata);
-  
-  // Get the download URL
-  const downloadURL = await getDownloadURL(storageRef);
-  
-  return {
-    url: downloadURL,
-    path: securePath,
-    name: file.name,
-    type: file.type,
-    size: file.size,
-    metadata: secureMetadata.customMetadata
-  };
+  try {
+    // Upload the file
+    await uploadBytes(storageRef, file, secureMetadata);
+    
+    // Get the download URL
+    const downloadURL = await getDownloadURL(storageRef);
+    
+    return {
+      url: downloadURL,
+      path: securePath,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      metadata: secureMetadata.customMetadata
+    };
+  } catch (error) {
+    // If upload fails, provide a more helpful error message
+    if (error.code === 'storage/quota-exceeded') {
+      throw new Error('Storage quota exceeded. Please contact support or try uploading a smaller file.');
+    } else if (error.code === 'storage/unauthorized') {
+      throw new Error('You do not have permission to upload files. Please check your authentication.');
+    } else if (error.code === 'storage/canceled') {
+      throw new Error('Upload was canceled.');
+    } else if (error.code === 'storage/unknown') {
+      throw new Error('An unknown error occurred during upload. Please try again.');
+    } else {
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+  }
 };
 
 /**

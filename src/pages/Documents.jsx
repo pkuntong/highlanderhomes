@@ -142,6 +142,17 @@ const Documents = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (100MB limit)
+      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+      if (file.size > maxSize) {
+        setError(`File size too large. Maximum allowed size is 100MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+        e.target.value = ''; // Clear the file input
+        return;
+      }
+      
+      // Clear any previous error
+      setError(null);
+      
       // Set basic file information in the form
       setForm((prev) => ({ 
         ...prev, 
@@ -417,11 +428,22 @@ const Documents = () => {
               <Input name="date" id="date" value={form.date} onChange={handleFormChange} placeholder="YYYY-MM-DD" type="date" required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="fileUpload">Upload File</label>
-              <Input name="fileUpload" id="fileUpload" type="file" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*" onChange={handleFileUpload} />
-              {form.fileBase64 && (
-                <span className="block text-xs text-green-600 mt-2">File uploaded</span>
+              <label className="block text-sm font-medium mb-1" htmlFor="fileUpload">Upload File (Max 100MB)</label>
+              <Input 
+                name="fileUpload" 
+                id="fileUpload" 
+                type="file" 
+                accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/*,image/*,video/*,audio/*" 
+                onChange={handleFileUpload} 
+              />
+              {form.fileObj && (
+                <div className="block text-xs text-green-600 mt-2">
+                  File selected: {form.fileName} ({(form.fileSize / 1024).toFixed(0)} KB)
+                </div>
               )}
+              <div className="text-xs text-gray-500 mt-1">
+                Supported: PDF, Word, Excel, PowerPoint, Images, Videos, Audio, Text files
+              </div>
             </div>
           </div>
           <div className="flex gap-2 mt-4 justify-end">
