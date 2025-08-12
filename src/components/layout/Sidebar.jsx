@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   Users,
   Menu,
-  X
+  X,
+  Wrench
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -30,6 +31,11 @@ const sidebarItems = [
     name: "Tenants", 
     path: "/tenants", 
     icon: <Users className="mr-2 h-5 w-5" /> 
+  },
+  { 
+    name: "Maintenance", 
+    path: "/maintenance", 
+    icon: <Wrench className="mr-2 h-5 w-5" /> 
   },
   { 
     name: "Documents", 

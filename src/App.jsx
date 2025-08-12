@@ -13,6 +13,7 @@ import Reminders from "./pages/Reminders";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import Tenants from "./pages/Tenants";
+import MaintenanceRequests from "./pages/MaintenanceRequests";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -67,6 +68,7 @@ const App = () => {
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/tenants" element={<Tenants />} />
+              <Route path="/maintenance" element={<MaintenanceRequests />} />
             </Route>
 
             {/* Catch all route */}
