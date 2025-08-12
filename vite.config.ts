@@ -48,7 +48,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    extensions: [".mjs", ".js", ".jsx", ".json"],
+    extensions: [".mjs", ".js", ".jsx", ".ts", ".tsx", ".json"],
   },
   optimizeDeps: {
     include: ["react", "react-dom", "react-router-dom"],
