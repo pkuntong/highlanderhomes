@@ -484,11 +484,14 @@ const Properties = () => {
               <Input name="description" id="description" value={form.description} onChange={handleFormChange} placeholder="Description" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="imageUpload">Home Image</label>
-              <Input name="imageUpload" id="imageUpload" type="file" accept="image/*" onChange={handleImageUpload} />
+              <label className="block text-sm font-medium mb-1" htmlFor="imageUpload">Property Media</label>
+              <Input name="imageUpload" id="imageUpload" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.ico,.mp4,.avi,.mov,.wmv,.flv,.webm,.mkv" onChange={handleImageUpload} />
               {form.imageBase64 && (
                 <img src={form.imageBase64} alt="Preview" className="mt-2 h-24 w-24 object-cover rounded" />
               )}
+              <div className="text-xs text-gray-500 mt-1">
+                Supported: Images, Videos, PDFs, Documents
+              </div>
             </div>
           </div>
           <div className="flex gap-2 mt-4 justify-end">

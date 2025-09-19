@@ -20,7 +20,7 @@ import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { uploadSecureFile, deleteSecureFile, addSecureDocument, updateSecureDocument } from "@/utils/secureStorage";
+import { addSecureDocument, updateSecureDocument } from "@/utils/secureStorage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -95,8 +95,16 @@ const Documents = () => {
   // Fetch properties for house dropdown
   useEffect(() => {
     async function fetchProperties() {
-      const querySnapshot = await getDocs(collection(db, "properties"));
-      setProperties(querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })));
+      try {
+        console.log("🏠 Fetching properties for dropdown...");
+        const querySnapshot = await getDocs(collection(db, "properties"));
+        const propertiesData = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        console.log("🏠 Properties loaded:", propertiesData);
+        setProperties(propertiesData);
+      } catch (error) {
+        console.error("❌ Error fetching properties:", error);
+        setError("Failed to load properties. Please refresh the page.");
+      }
     }
     fetchProperties();
   }, []);
@@ -112,17 +120,13 @@ const Documents = () => {
       try {
         setError(null);
         const document = documents[index];
-        
-        // If the document has an associated file in storage, delete that first
-        if (document.filePath) {
-          await deleteSecureFile(document.filePath);
-        }
-        
-        // Then delete the document record from Firestore
+
+        // Delete the document record from Firestore (file is stored as base64 in the document)
         await deleteDoc(doc(db, "documents", document.id));
         await Documents.fetchDocuments();
+        console.log("✅ Document deleted successfully");
       } catch (err) {
-        console.error("Error deleting document:", err);
+        console.error("❌ Error deleting document:", err);
         setError("Failed to delete document: " + err.message);
       }
     }
@@ -142,10 +146,10 @@ const Documents = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (100MB limit)
-      const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+      // Check file size (1MB limit for free base64 storage)
+      const maxSize = 1 * 1024 * 1024; // 1MB in bytes
       if (file.size > maxSize) {
-        setError(`File size too large. Maximum allowed size is 100MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+        setError(`File size too large for free storage. Maximum allowed size is 1MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
         e.target.value = ''; // Clear the file input
         return;
       }
@@ -175,16 +179,39 @@ const Documents = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    console.log("🔥 Form submission started", {
+      form,
+      isAuthenticated,
+      currentUser: currentUser ? { uid: currentUser.uid, email: currentUser.email } : null
+    });
+
     try {
       setError(null);
       setUploadProgress(0);
-      
-      // Validate form data
-      if (!form.name || !form.date || !form.house_id) {
-        setError("Please fill in all required fields");
+
+      // Check authentication first
+      if (!isAuthenticated || !currentUser) {
+        console.error("❌ Authentication failed", { isAuthenticated, currentUser });
+        setError("Please log in to upload documents");
         return;
       }
-      
+
+      // Validate form data
+      console.log("🔍 Validating form data:", {
+        name: form.name,
+        date: form.date,
+        house_id: form.house_id,
+        hasFile: !!form.fileObj
+      });
+
+      if (!form.name || !form.date || !form.house_id) {
+        console.error("❌ Form validation failed", { name: form.name, date: form.date, house_id: form.house_id });
+        setError("Please fill in all required fields (Name, Date, Property are required)");
+        return;
+      }
+
+      console.log("✅ Form validation passed, proceeding with upload");
+
       // Prepare base document data without file
       const docData = {
         name: form.name,
@@ -195,33 +222,56 @@ const Documents = () => {
         fileName: form.fileName || '',
         fileType: form.fileType || ''
       };
+
+      console.log("📄 Document data prepared:", docData);
       
-      // Handle file upload if there's a file
+      // Handle file upload if there's a file - using free base64 storage
       let fileData = {};
       if (form.fileObj) {
         try {
-          setUploadProgress(10);
-          // Upload file to secure storage
-          const fileInfo = await uploadSecureFile(
-            form.fileObj, 
-            'documents', 
-            { house_id: form.house_id, category: form.category }
-          );
-          setUploadProgress(70);
-          
-          // Add file details to document data
+          console.log("📤 Starting free base64 file upload:", {
+            fileName: form.fileObj.name,
+            fileSize: form.fileObj.size,
+            fileType: form.fileObj.type
+          });
+
+          // Check file size limit for base64 storage (1MB limit for Firestore)
+          const maxSize = 1 * 1024 * 1024; // 1MB in bytes
+          if (form.fileObj.size > maxSize) {
+            setError(`File too large for free storage. Maximum size is 1MB. Your file is ${(form.fileObj.size / 1024 / 1024).toFixed(1)}MB.`);
+            return;
+          }
+
+          setUploadProgress(20);
+
+          // Convert file to base64
+          const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(form.fileObj);
+          });
+
+          setUploadProgress(60);
+          console.log("✅ File converted to base64 successfully");
+
+          // Store file data for Firestore
           fileData = {
-            fileUrl: fileInfo.url,
-            filePath: fileInfo.path,
-            fileName: fileInfo.name,
-            fileType: fileInfo.type,
-            fileSize: fileInfo.size
+            fileBase64: base64Data,
+            fileName: form.fileObj.name,
+            fileType: form.fileObj.type,
+            fileSize: form.fileObj.size,
+            uploadMethod: 'base64_firestore'
           };
+
+          setUploadProgress(80);
         } catch (fileError) {
-          console.error("Error uploading file:", fileError);
-          setError("Failed to upload file: " + fileError.message);
+          console.error("❌ Error processing file:", fileError);
+          setError("Failed to process file: " + fileError.message);
           return;
         }
+      } else {
+        console.log("📄 No file to upload, creating document record only");
       }
       
       setUploadProgress(80);
@@ -232,22 +282,22 @@ const Documents = () => {
       if (editIndex !== null) {
         // If updating an existing document
         const documentId = documents[editIndex].id;
-        const currentDoc = documents[editIndex];
-        
-        // If changing files, delete the old file first
-        if (form.fileObj && currentDoc.filePath) {
-          await deleteSecureFile(currentDoc.filePath);
-        }
-        
-        // Update document
+        console.log("📝 Updating existing document:", documentId);
+
+        // Update document (file data replaces old file automatically)
         await updateSecureDocument(documentId, completeDocData);
+        console.log("✅ Document updated successfully");
       } else {
         // Add new document with security metadata
-        await addSecureDocument(completeDocData);
+        console.log("📝 Adding new document with data:", completeDocData);
+        const docId = await addSecureDocument(completeDocData);
+        console.log("✅ Document added successfully with ID:", docId);
       }
-      
+
       setUploadProgress(100);
+      console.log("Refreshing documents list...");
       await Documents.fetchDocuments();
+      console.log("Form submission completed successfully");
       setIsEditing(false);
       setForm(emptyDocument);
       setEditIndex(null);
@@ -428,21 +478,24 @@ const Documents = () => {
               <Input name="date" id="date" value={form.date} onChange={handleFormChange} placeholder="YYYY-MM-DD" type="date" required />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="fileUpload">Upload File (Max 100MB)</label>
-              <Input 
-                name="fileUpload" 
-                id="fileUpload" 
-                type="file" 
-                accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/*,image/*,video/*,audio/*" 
-                onChange={handleFileUpload} 
+              <label className="block text-sm font-medium mb-1" htmlFor="fileUpload">Upload File (Max 1MB - Free Storage)</label>
+              <Input
+                name="fileUpload"
+                id="fileUpload"
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.odt,.ods,.odp,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.ico,.mp4,.avi,.mov,.wmv,.flv,.webm,.mkv,.mp3,.wav,.ogg,.flac,.aac,.m4a,.zip,.rar,.7z,.tar,.gz,.json,.xml,.html,.css,.js,.ts,.py,.java,.cpp,.c,.h,.php,.rb,.go,.rs,.swift,.kt,.scala,.sh,.bat,.sql,.md,.yml,.yaml,.toml,.ini,.conf,.log,.backup"
+                onChange={handleFileUpload}
               />
               {form.fileObj && (
                 <div className="block text-xs text-green-600 mt-2">
                   File selected: {form.fileName} ({(form.fileSize / 1024).toFixed(0)} KB)
                 </div>
               )}
+              <div className="text-xs text-green-600 mt-1">
+                ✅ Free storage: Files stored directly in database (no external costs)
+              </div>
               <div className="text-xs text-gray-500 mt-1">
-                Supported: PDF, Word, Excel, PowerPoint, Images, Videos, Audio, Text files
+                Supported: PDF, Office docs, Images, Videos, Audio, Archives, Code files, and more (max 1MB each)
               </div>
             </div>
           </div>
