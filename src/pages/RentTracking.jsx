@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Calendar, CheckCircle, AlertCircle, Clock, Edit, Trash2 } from "lucide-react";
+import PaymentQuickActions from "@/components/payments/PaymentQuickActions";
+import { DollarSign, Calendar, CheckCircle, AlertCircle, Clock, Edit, Trash2, TrendingUp } from "lucide-react";
 import { db } from "@/firebase";
 import {
   collection,
@@ -22,6 +23,7 @@ import {
 const RentTracking = () => {
   const [tenants, setTenants] = useState([]);
   const [rentRecords, setRentRecords] = useState([]);
+  const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [isEditingPayment, setIsEditingPayment] = useState(false);
@@ -37,39 +39,47 @@ const RentTracking = () => {
     notes: ""
   });
 
-  // Fetch tenants and rent records
+  // Fetch tenants, rent records, and properties
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // Fetch tenants
-        const tenantsSnapshot = await getDocs(collection(db, "tenants"));
-        const tenantsData = tenantsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setTenants(tenantsData);
-
-        // Fetch rent records
-        const rentQuery = query(
-          collection(db, "rentRecords"),
-          orderBy("dueDate", "desc")
-        );
-        const rentSnapshot = await getDocs(rentQuery);
-        const rentData = rentSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setRentRecords(rentData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch tenants
+      const tenantsSnapshot = await getDocs(collection(db, "tenants"));
+      const tenantsData = tenantsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTenants(tenantsData);
+
+      // Fetch properties
+      const propertiesSnapshot = await getDocs(collection(db, "properties"));
+      const propertiesData = propertiesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setProperties(propertiesData);
+
+      // Fetch rent records
+      const rentQuery = query(
+        collection(db, "rentRecords"),
+        orderBy("dueDate", "desc")
+      );
+      const rentSnapshot = await getDocs(rentQuery);
+      const rentData = rentSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setRentRecords(rentData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddPayment = () => {
     setIsAddingPayment(true);
@@ -307,6 +317,61 @@ const RentTracking = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Properties Quick Payment Actions */}
+      {properties.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <TrendingUp className="mr-2 h-5 w-5" />
+              Property Payment Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {properties.map((property) => (
+                <div
+                  key={property.id}
+                  className="flex flex-col md:flex-row md:items-center md:justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg gap-4"
+                >
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{property.address}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {property.city}, {property.state} {property.zipCode}
+                    </p>
+                    <p className="text-sm font-medium text-green-600 mt-1">
+                      ${property.monthlyRent?.toLocaleString() || '0'}/month
+                    </p>
+                    <div className="mt-2">
+                      {property.paymentStatus === 'paid' && (
+                        <Badge className="bg-green-100 text-green-800">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Paid
+                        </Badge>
+                      )}
+                      {property.paymentStatus === 'pending' && (
+                        <Badge className="bg-yellow-100 text-yellow-800">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Pending
+                        </Badge>
+                      )}
+                      {property.paymentStatus === 'overdue' && (
+                        <Badge className="bg-red-100 text-red-800">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Overdue
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <PaymentQuickActions property={property} onUpdate={fetchData} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Add Payment Button */}
       <div className="mb-6 flex justify-between items-center">

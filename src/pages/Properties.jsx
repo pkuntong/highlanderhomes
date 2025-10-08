@@ -10,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building, Plus, Edit, Trash2 } from "lucide-react";
+import { Building, Plus, Edit, Trash2, Download, Square, CheckSquare, Eye } from "lucide-react";
+import PropertyFilters from "@/components/properties/PropertyFilters";
+import BulkActions from "@/components/properties/BulkActions";
 import { db } from "@/firebase";
 import {
   collection,
@@ -45,12 +47,16 @@ const emptyProperty = {
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const [rentRange, setRentRange] = useState([0, 10000]);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [form, setForm] = useState(emptyProperty);
   const [deleteErrorIndex, setDeleteErrorIndex] = useState(null);
+  const [selectedProperties, setSelectedProperties] = useState([]);
 
   // Function to remove duplicate properties with the same address
   const cleanupDuplicateProperties = async () => {
@@ -145,10 +151,62 @@ const Properties = () => {
     Properties.fetchProperties = fetchProperties;
   }, []);
 
+  // Get unique cities for filter dropdown
+  const cities = [...new Set(properties.map(p => p.city).filter(Boolean))].sort();
+
+  // Export to CSV function
+  const handleExportCSV = () => {
+    const headers = ['Address', 'City', 'State', 'Zip', 'Bedrooms', 'Bathrooms', 'Sq Ft', 'Monthly Rent', 'Status', 'Payment Status'];
+    const csvData = filteredProperties.map(p => [
+      p.address,
+      p.city,
+      p.state,
+      p.zipCode,
+      p.bedrooms,
+      `${p.fullBathrooms}.${p.halfBathrooms}`,
+      p.squareFootage,
+      p.monthlyRent,
+      p.status,
+      p.paymentStatus
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `properties-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const filteredProperties = properties.filter((property) => {
+    // Status filter
     if (statusFilter !== "all" && property.status !== statusFilter) {
       return false;
     }
+
+    // Payment filter
+    if (paymentFilter !== "all" && property.paymentStatus !== paymentFilter) {
+      return false;
+    }
+
+    // City filter
+    if (cityFilter !== "all" && property.city !== cityFilter) {
+      return false;
+    }
+
+    // Rent range filter
+    const rent = property.monthlyRent || 0;
+    if (rent < rentRange[0] || rent > rentRange[1]) {
+      return false;
+    }
+
+    // Search filter
     const searchLower = searchTerm.toLowerCase();
     return (
       property.address.toLowerCase().includes(searchLower) ||
@@ -373,48 +431,93 @@ const Properties = () => {
     setEditIndex(null);
   };
 
+  const togglePropertySelection = (property) => {
+    setSelectedProperties(prev => {
+      const isSelected = prev.find(p => p.id === property.id);
+      if (isSelected) {
+        return prev.filter(p => p.id !== property.id);
+      } else {
+        return [...prev, property];
+      }
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProperties.length === filteredProperties.length) {
+      setSelectedProperties([]);
+    } else {
+      setSelectedProperties(filteredProperties);
+    }
+  };
+
+  const isSelected = (property) => {
+    return selectedProperties.some(p => p.id === property.id);
+  };
+
   if (loading) return <div>Loading properties...</div>;
 
   return (
     <PageLayout title="Properties">
-      <div className="mb-6 flex flex-col md:flex-row gap-4 md:justify-between md:items-center">
-        <div className="flex flex-col md:flex-row gap-4 md:items-center">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Search properties..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full md:w-80"
-            />
-          </div>
+      {/* Enhanced Filters */}
+      <PropertyFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        paymentFilter={paymentFilter}
+        setPaymentFilter={setPaymentFilter}
+        rentRange={rentRange}
+        setRentRange={setRentRange}
+        cityFilter={cityFilter}
+        setCityFilter={setCityFilter}
+        cities={cities}
+      />
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-40">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Properties</SelectItem>
-              <SelectItem value="occupied">Occupied</SelectItem>
-              <SelectItem value="vacant">Vacant</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Action Buttons */}
+      <div className="mb-6 flex gap-2 justify-between items-center">
+        <div className="flex gap-2 items-center">
+          {filteredProperties.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {selectedProperties.length === filteredProperties.length ? (
+                <CheckSquare className="h-4 w-4 mr-2" />
+              ) : (
+                <Square className="h-4 w-4 mr-2" />
+              )}
+              Select All
+            </Button>
+          )}
+          <span className="text-sm text-gray-600">
+            {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
+          </span>
         </div>
 
-        <div className="flex gap-2 md:self-end">
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV}>
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
           <Button variant="outline" onClick={async () => {
             await cleanupDuplicateProperties();
             await Properties.fetchProperties();
             alert('Properties refreshed and duplicates removed');
           }}>
-            Refresh & Clean Properties
+            Refresh
           </Button>
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" /> Add Property
           </Button>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      <BulkActions
+        selectedProperties={selectedProperties}
+        onComplete={Properties.fetchProperties}
+        onClearSelection={() => setSelectedProperties([])}
+      />
 
       {isEditing && (
         <form onSubmit={handleFormSubmit} className="mb-6 p-4 border rounded bg-gray-50">
@@ -504,7 +607,33 @@ const Properties = () => {
       {filteredProperties.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProperties.map((property, idx) => (
-            <Card key={property.id} className="relative group overflow-hidden">
+            <Card
+              key={property.id}
+              className={`relative group overflow-hidden transition-all ${
+                isSelected(property) ? 'ring-2 ring-highlander-600 shadow-lg' : ''
+              }`}
+            >
+              {/* Selection Checkbox */}
+              <div className="absolute top-2 left-2 z-10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePropertySelection(property);
+                  }}
+                  className={`p-2 rounded-full transition-all ${
+                    isSelected(property)
+                      ? 'bg-highlander-600 text-white'
+                      : 'bg-white/80 text-gray-600 hover:bg-white'
+                  } shadow-md`}
+                >
+                  {isSelected(property) ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
               <div className="h-40 bg-gray-200">
                 <img 
                   src={property.imageBase64 || property.imageUrl} 
@@ -539,6 +668,16 @@ const Properties = () => {
                 <div className="mt-1 text-xs text-gray-500">Payment Status: {property.paymentStatus || 'pending'}</div>
               </CardContent>
               <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedProperty(property);
+                    setDetailsDialogOpen(true);
+                  }}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
                 <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
                 <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
                 {deleteErrorIndex === idx && (
@@ -566,6 +705,13 @@ const Properties = () => {
           </Button>
         </div>
       )}
+
+      {/* Property Details Dialog */}
+      <PropertyDetailsDialog
+        property={selectedProperty}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
     </PageLayout>
   );
 };

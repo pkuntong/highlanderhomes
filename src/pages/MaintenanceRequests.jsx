@@ -22,14 +22,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Phone, 
-  User, 
-  Calendar, 
-  DollarSign, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Phone,
+  User,
+  Calendar,
+  DollarSign,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -49,6 +49,7 @@ import {
   orderBy,
   where
 } from "firebase/firestore";
+import MaintenanceStats from "@/components/maintenance/MaintenanceStats";
 
 const emptyMaintenanceRequest = {
   title: '',
@@ -227,6 +228,8 @@ const MaintenanceRequests = () => {
 
   return (
     <PageLayout title="Maintenance Requests">
+      <MaintenanceStats requests={maintenanceRequests} />
+
       <div className="mb-6 flex flex-col md:flex-row gap-4 md:justify-between md:items-center">
         <div className="flex flex-col md:flex-row gap-4 md:items-center">
           <Select value={statusFilter} onValueChange={setStatusFilter}>

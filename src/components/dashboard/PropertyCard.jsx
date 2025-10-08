@@ -1,10 +1,24 @@
 import { InteractiveCard, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Bed, Bath, Square, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { MapPin, Bed, Bath, Square, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getCachedMarketData } from "@/services/rentcast";
+import { db } from "@/firebase";
 
 const PropertyCard = ({ property }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [marketEstimate, setMarketEstimate] = useState(null);
+
+  useEffect(() => {
+    const loadMarketEstimate = async () => {
+      if (!property?.id) return;
+      const cached = await getCachedMarketData(property.id, db, 24);
+      if (cached?.rentEstimate) {
+        setMarketEstimate(cached.rentEstimate);
+      }
+    };
+    loadMarketEstimate();
+  }, [property?.id]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -116,27 +130,55 @@ const PropertyCard = ({ property }) => {
 
       {/* Premium Footer */}
       <CardFooter className="border-t border-border-subtle bg-gradient-to-r from-background-elevated to-background p-6">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-600">
-              <DollarSign size={18} className="text-primary-foreground" />
+        <div className="w-full space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-600">
+                <DollarSign size={18} className="text-primary-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-premium">
+                  ${typeof property.monthlyRent === 'number' ? property.monthlyRent.toLocaleString() : 0}
+                </p>
+                <p className="text-xs text-foreground-muted">per month</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-premium">
-                ${typeof property.monthlyRent === 'number' ? property.monthlyRent.toLocaleString() : 0}
-              </p>
-              <p className="text-xs text-foreground-muted">per month</p>
+
+            <div className={`transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
+              <div className="text-right">
+                <p className="text-sm font-medium text-accent-emerald">
+                  ${(typeof property.monthlyRent === 'number' ? property.monthlyRent * 12 : 0).toLocaleString()}
+                </p>
+                <p className="text-xs text-foreground-muted">annual</p>
+              </div>
             </div>
           </div>
-          
-          <div className={`transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
-            <div className="text-right">
-              <p className="text-sm font-medium text-accent-emerald">
-                ${(typeof property.monthlyRent === 'number' ? property.monthlyRent * 12 : 0).toLocaleString()}
-              </p>
-              <p className="text-xs text-foreground-muted">annual</p>
+
+          {/* Market Estimate Badge */}
+          {marketEstimate && marketEstimate.rent && (
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <span className="text-xs text-muted-foreground">Market Estimate:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">${marketEstimate.rent.toLocaleString()}/mo</span>
+                {(() => {
+                  const currentRent = property.monthlyRent || 0;
+                  const estimatedRent = marketEstimate.rent;
+                  const diff = estimatedRent - currentRent;
+                  const diffPercent = currentRent > 0 ? ((diff / currentRent) * 100).toFixed(0) : 0;
+                  const isUnderpriced = diff > 0;
+
+                  if (Math.abs(diffPercent) < 5) return null;
+
+                  return (
+                    <Badge variant={isUnderpriced ? "default" : "destructive"} className="text-xs px-2 py-0.5">
+                      {isUnderpriced ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+                      {Math.abs(diffPercent)}%
+                    </Badge>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </CardFooter>
     </InteractiveCard>

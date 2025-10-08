@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import PropertyCard from "@/components/dashboard/PropertyCard";
+import PropertyStats from "@/components/dashboard/PropertyStats";
 import UpcomingReminders from "@/components/dashboard/UpcomingReminders";
 import MaintenanceStatus from "@/components/dashboard/MaintenanceStatus";
+import MarketAnalytics from "@/components/dashboard/MarketAnalytics";
 import { DashboardSkeleton } from "@/components/ui/loading";
 import { Building, Users, ArrowUp, ArrowDown, DollarSign, Wrench, TrendingUp, Home } from "lucide-react";
 import { db } from "@/firebase";
@@ -95,6 +97,11 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* New Property Statistics Component */}
+      <div className="mb-8 animate-slide-up">
+        <PropertyStats properties={properties} />
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-12">
         <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -167,6 +174,13 @@ const Dashboard = () => {
           <div className="animate-slide-up" style={{ animationDelay: '0.8s' }}>
             <UpcomingReminders reminders={activeReminders} />
           </div>
+
+          {/* Market Analytics for first property */}
+          {properties.length > 0 && (
+            <div className="animate-slide-up" style={{ animationDelay: '0.9s' }}>
+              <MarketAnalytics property={properties[0]} />
+            </div>
+          )}
         </div>
       </div>
 
