@@ -37,9 +37,16 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Get only active reminders
+  // Get only active reminders (pending and future/today dates only)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+
   const activeReminders = reminders
-    .filter(reminder => reminder.status === "pending")
+    .filter(reminder => {
+      const reminderDate = new Date(reminder.date);
+      reminderDate.setHours(0, 0, 0, 0);
+      return reminder.status === "pending" && reminderDate >= today;
+    })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
 

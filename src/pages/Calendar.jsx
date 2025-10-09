@@ -84,6 +84,8 @@ const Calendar = () => {
   const handleDateSelect = (selectedDate) => {
     setDate(selectedDate);
     if (selectedDate) {
+      // Open form and pre-fill date when clicking on calendar
+      setIsAddingReminder(true);
       setReminderForm(prev => ({
         ...prev,
         date: selectedDate.toISOString().split('T')[0]
@@ -95,22 +97,7 @@ const Calendar = () => {
 
   return (
     <PageLayout title="Calendar">
-      <div className="mb-4 flex justify-between items-center">
-        <Button
-          onClick={() => {
-            setIsAddingReminder(true);
-            if (date) {
-              setReminderForm(prev => ({
-                ...prev,
-                date: date.toISOString().split('T')[0]
-              }));
-            }
-          }}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Reminder
-        </Button>
+      <div className="mb-4 flex justify-end items-center">
         <Button onClick={fetchReminders} variant="outline">Refresh</Button>
       </div>
       {/* Add Reminder Form */}

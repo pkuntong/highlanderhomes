@@ -58,6 +58,8 @@ const Properties = () => {
   const [form, setForm] = useState(emptyProperty);
   const [deleteErrorIndex, setDeleteErrorIndex] = useState(null);
   const [selectedProperties, setSelectedProperties] = useState([]);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   // Function to remove duplicate properties with the same address
   const cleanupDuplicateProperties = async () => {

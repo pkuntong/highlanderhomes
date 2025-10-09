@@ -152,11 +152,6 @@ const Sidebar = () => {
                         ? "bg-gradient-to-r from-primary to-primary-600 text-primary-foreground shadow-glow"
                         : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                     )}>
-                      {/* Active indicator */}
-                      {isActive && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent-rose to-primary rounded-xl opacity-20 animate-gradient-x" />
-                      )}
-                      
                       {/* Icon with animation */}
                       <div className={cn(
                         "flex items-center justify-center w-6 h-6 mr-4 transition-all duration-300",
