@@ -1,48 +1,71 @@
-# Welcome to your Highlander Homes project
+# Highlander Homes
 
-**Use your preferred IDE**
+A comprehensive property management platform for landlords and property managers.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Features
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Property CRUD operations
+- Tenant management
+- Payment tracking
+- RentCast market intelligence
+- Document management
+- Maintenance request tracking
+- Mobile-responsive PWA
+- Dark mode support
 
-Follow these steps:
+## Getting Started
+
+### Prerequisites
+
+- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd highlanderhomes
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Technology Stack
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Frontend:** React 18 + Vite
+- **UI Framework:** Tailwind CSS + shadcn/ui
+- **Database:** Firebase Firestore
+- **Authentication:** Firebase Auth
+- **Market Data:** RentCast API
+- **PWA:** Workbox service worker
 
-**Use GitHub Codespaces**
+## Project Structure
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+highlanderhomes/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/         # Page components
+│   ├── services/      # API services
+│   ├── contexts/      # React contexts
+│   └── firebase.js    # Firebase configuration
+├── docs/              # Documentation
+└── functions/         # Firebase Cloud Functions
+```
 
-## What technologies are used for this project?
+## Documentation
 
-This project is built with:
+- [Build Status](BUILD_STATUS.md) - Comprehensive build report
+- [Next Steps](NEXT_STEPS.md) - Roadmap and recommendations
+- [RentCast Integration](docs/RENTCAST_INTEGRATION.md) - Market data API guide
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Contact
+
+- Email: highlanderhomes22@gmail.com
+- Phone: 240-449-4338
 

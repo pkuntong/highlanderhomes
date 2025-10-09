@@ -319,7 +319,3 @@ You now have a **production-ready property management platform** with:
 ✅ Maintenance request tracking  
 
 **Next:** Test everything, deploy to production, and start getting users! 🚀
-
----
-
-**Built with ❤️ for property managers**
