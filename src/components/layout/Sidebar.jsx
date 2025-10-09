@@ -1,20 +1,19 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { 
-  Building, 
-  FileText, 
-  Calendar, 
-  Bell, 
-  ChartBar, 
+import {
+  Building,
+  FileText,
+  Calendar,
+  Bell,
+  ChartBar,
   User,
   LayoutDashboard,
   Users,
   Menu,
   X,
   Wrench,
-  DollarSign,
-  Sparkles
+  DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -110,12 +109,11 @@ const Sidebar = () => {
                 className="flex items-center gap-3 group"
               >
                 <div className="relative">
-                  <img 
-                    src="/HH Logo.png" 
-                    alt="Highlander Homes Logo" 
-                    className="h-12 w-auto transition-transform duration-300 group-hover:scale-110" 
+                  <img
+                    src="/HH Logo.png"
+                    alt="Highlander Homes Logo"
+                    className="h-20 w-auto transition-transform duration-300 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent-rose/20 rounded-lg blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gradient">
@@ -179,16 +177,11 @@ const Sidebar = () => {
                         {item.name}
                       </span>
                       
-                      {/* Premium accent for active item */}
+                      {/* Active indicator dot */}
                       {isActive && (
                         <div className="ml-auto">
-                          <Sparkles className="h-4 w-4 text-primary-foreground animate-pulse" />
+                          <div className="h-2 w-2 bg-primary-foreground rounded-full" />
                         </div>
-                      )}
-                      
-                      {/* Hover effect */}
-                      {isHovered && !isActive && (
-                        <div className="absolute right-3 w-2 h-2 bg-primary rounded-full animate-bounce" />
                       )}
                     </div>
                   </Link>

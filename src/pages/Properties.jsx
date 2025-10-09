@@ -13,6 +13,7 @@ import {
 import { Building, Plus, Edit, Trash2, Download, Square, CheckSquare, Eye } from "lucide-react";
 import PropertyFilters from "@/components/properties/PropertyFilters";
 import BulkActions from "@/components/properties/BulkActions";
+import PropertyDetailsDialog from "@/components/properties/PropertyDetailsDialog";
 import { db } from "@/firebase";
 import {
   collection,

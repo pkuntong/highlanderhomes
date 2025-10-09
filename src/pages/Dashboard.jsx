@@ -146,9 +146,9 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
         {/* Properties Section */}
-        <div className="xl:col-span-3 animate-slide-up" style={{ animationDelay: '0.6s' }}>
+        <div className="lg:col-span-2 animate-slide-up" style={{ animationDelay: '0.6s' }}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-premium">Portfolio Overview</h2>
             <div className="flex items-center text-sm text-foreground-muted">
@@ -156,10 +156,10 @@ const Dashboard = () => {
               <span>Latest properties</span>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {properties.slice(0, 4).map((property, index) => (
-              <div 
-                key={property.id} 
+              <div
+                key={property.id}
                 className="animate-slide-up"
                 style={{ animationDelay: `${0.7 + index * 0.1}s` }}
               >
@@ -170,7 +170,7 @@ const Dashboard = () => {
         </div>
 
         {/* Sidebar Content */}
-        <div className="xl:col-span-1 space-y-8">
+        <div className="lg:col-span-1 space-y-6">
           <div className="animate-slide-up" style={{ animationDelay: '0.8s' }}>
             <UpcomingReminders reminders={activeReminders} />
           </div>
