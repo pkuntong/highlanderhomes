@@ -1,0 +1,205 @@
+import { v } from "convex/values";
+import { query, mutation } from "./_generated/server";
+
+/**
+ * List all properties for the current user
+ * Note: In production, get userId from auth token
+ */
+export const list = query({
+  args: {
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    // TODO: Get userId from auth token in production
+    if (!args.userId) {
+      return [];
+    }
+
+    const properties = await ctx.db
+      .query("properties")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId!))
+      .order("desc")
+      .collect();
+
+    return properties.map((prop) => ({
+      _id: prop._id,
+      id: prop._id,
+      name: prop.name,
+      address: prop.address,
+      city: prop.city,
+      state: prop.state,
+      zipCode: prop.zipCode,
+      propertyType: prop.propertyType,
+      units: prop.units,
+      monthlyRent: prop.monthlyRent,
+      purchasePrice: prop.purchasePrice,
+      currentValue: prop.currentValue,
+      imageURL: prop.imageURL,
+      notes: prop.notes,
+      createdAt: prop.createdAt,
+      updatedAt: prop.updatedAt,
+    }));
+  },
+});
+
+/**
+ * Get a single property by ID
+ */
+export const get = query({
+  args: { id: v.id("properties") },
+  handler: async (ctx, args) => {
+    const property = await ctx.db.get(args.id);
+    if (!property) {
+      throw new Error("Property not found");
+    }
+
+    return {
+      _id: property._id,
+      id: property._id,
+      name: property.name,
+      address: property.address,
+      city: property.city,
+      state: property.state,
+      zipCode: property.zipCode,
+      propertyType: property.propertyType,
+      units: property.units,
+      monthlyRent: property.monthlyRent,
+      purchasePrice: property.purchasePrice,
+      currentValue: property.currentValue,
+      imageURL: property.imageURL,
+      notes: property.notes,
+      createdAt: property.createdAt,
+      updatedAt: property.updatedAt,
+    };
+  },
+});
+
+/**
+ * Create a new property
+ */
+export const create = mutation({
+  args: {
+    name: v.string(),
+    address: v.string(),
+    city: v.string(),
+    state: v.string(),
+    zipCode: v.string(),
+    propertyType: v.string(),
+    units: v.number(),
+    monthlyRent: v.number(),
+    purchasePrice: v.optional(v.number()),
+    currentValue: v.optional(v.number()),
+    imageURL: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const propertyId = await ctx.db.insert("properties", {
+      name: args.name,
+      address: args.address,
+      city: args.city,
+      state: args.state,
+      zipCode: args.zipCode,
+      propertyType: args.propertyType,
+      units: args.units,
+      monthlyRent: args.monthlyRent,
+      purchasePrice: args.purchasePrice,
+      currentValue: args.currentValue,
+      imageURL: args.imageURL,
+      notes: args.notes,
+      userId: args.userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const property = await ctx.db.get(propertyId);
+    return {
+      _id: property!._id,
+      id: property!._id,
+      name: property!.name,
+      address: property!.address,
+      city: property!.city,
+      state: property!.state,
+      zipCode: property!.zipCode,
+      propertyType: property!.propertyType,
+      units: property!.units,
+      monthlyRent: property!.monthlyRent,
+      purchasePrice: property!.purchasePrice,
+      currentValue: property!.currentValue,
+      imageURL: property!.imageURL,
+      notes: property!.notes,
+      createdAt: property!.createdAt,
+      updatedAt: property!.updatedAt,
+    };
+  },
+});
+
+/**
+ * Update an existing property
+ */
+export const update = mutation({
+  args: {
+    id: v.id("properties"),
+    name: v.optional(v.string()),
+    address: v.optional(v.string()),
+    city: v.optional(v.string()),
+    state: v.optional(v.string()),
+    zipCode: v.optional(v.string()),
+    propertyType: v.optional(v.string()),
+    units: v.optional(v.number()),
+    monthlyRent: v.optional(v.number()),
+    purchasePrice: v.optional(v.number()),
+    currentValue: v.optional(v.number()),
+    imageURL: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args;
+    const property = await ctx.db.get(id);
+    if (!property) {
+      throw new Error("Property not found");
+    }
+
+    await ctx.db.patch(id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(id);
+    return {
+      _id: updated!._id,
+      id: updated!._id,
+      name: updated!.name,
+      address: updated!.address,
+      city: updated!.city,
+      state: updated!.state,
+      zipCode: updated!.zipCode,
+      propertyType: updated!.propertyType,
+      units: updated!.units,
+      monthlyRent: updated!.monthlyRent,
+      purchasePrice: updated!.purchasePrice,
+      currentValue: updated!.currentValue,
+      imageURL: updated!.imageURL,
+      notes: updated!.notes,
+      createdAt: updated!.createdAt,
+      updatedAt: updated!.updatedAt,
+    };
+  },
+});
+
+/**
+ * Delete a property
+ */
+export const deleteProperty = mutation({
+  args: { id: v.id("properties") },
+  handler: async (ctx, args) => {
+    const property = await ctx.db.get(args.id);
+    if (!property) {
+      throw new Error("Property not found");
+    }
+
+    await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});

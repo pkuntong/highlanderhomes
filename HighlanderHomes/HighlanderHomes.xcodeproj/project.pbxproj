@@ -1,0 +1,829 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		6CA435D32F2A57BD00A70F6F /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435BF2F2A57BD00A70F6F /* APIService.swift */; };
+		6CA435D42F2A57BD00A70F6F /* Property.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435BA2F2A57BD00A70F6F /* Property.swift */; };
+		6CA435D52F2A57BD00A70F6F /* HighlanderHomesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435AD2F2A57BD00A70F6F /* HighlanderHomesApp.swift */; };
+		6CA435D62F2A57BD00A70F6F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435AC2F2A57BD00A70F6F /* ContentView.swift */; };
+		6CA435D72F2A57BD00A70F6F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435B22F2A57BD00A70F6F /* Theme.swift */; };
+		6CA435D82F2A57BD00A70F6F /* TriageHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435CC2F2A57BD00A70F6F /* TriageHubView.swift */; };
+		6CA435D92F2A57BD00A70F6F /* FeedEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435B82F2A57BD00A70F6F /* FeedEvent.swift */; };
+		6CA435DA2F2A57BD00A70F6F /* CommandCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435C62F2A57BD00A70F6F /* CommandCenterView.swift */; };
+		6CA435DB2F2A57BD00A70F6F /* PropertyVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435CE2F2A57BD00A70F6F /* PropertyVaultView.swift */; };
+		6CA435DC2F2A57BD00A70F6F /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435C12F2A57BD00A70F6F /* SyncService.swift */; };
+		6CA435DD2F2A57BD00A70F6F /* Expense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435B72F2A57BD00A70F6F /* Expense.swift */; };
+		6CA435DE2F2A57BD00A70F6F /* Tenant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435BC2F2A57BD00A70F6F /* Tenant.swift */; };
+		6CA435DF2F2A57BD00A70F6F /* MaintenanceFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435C82F2A57BD00A70F6F /* MaintenanceFeedView.swift */; };
+		6CA435E02F2A57BD00A70F6F /* QuickEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435CA2F2A57BD00A70F6F /* QuickEntryView.swift */; };
+		6CA435E12F2A57BD00A70F6F /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435B02F2A57BD00A70F6F /* HapticManager.swift */; };
+		6CA435E22F2A57BD00A70F6F /* MaintenanceRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435B92F2A57BD00A70F6F /* MaintenanceRequest.swift */; };
+		6CA435E32F2A57BD00A70F6F /* Contractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435B62F2A57BD00A70F6F /* Contractor.swift */; };
+		6CA435E42F2A57BD00A70F6F /* RentPayment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA435BB2F2A57BD00A70F6F /* RentPayment.swift */; };
+		6CA435E52F2A57BD00A70F6F /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 6CA435D12F2A57BD00A70F6F /* README.md */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6CA435902F2A56CE00A70F6F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6CA435782F2A56CD00A70F6F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6CA4357F2F2A56CD00A70F6F;
+			remoteInfo = HighlanderHomes;
+		};
+		6CA4359A2F2A56CE00A70F6F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6CA435782F2A56CD00A70F6F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6CA4357F2F2A56CD00A70F6F;
+			remoteInfo = HighlanderHomes;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		6CA435802F2A56CD00A70F6F /* HighlanderHomes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HighlanderHomes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CA4358F2F2A56CE00A70F6F /* HighlanderHomesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HighlanderHomesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CA435992F2A56CE00A70F6F /* HighlanderHomesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HighlanderHomesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6CA435AC2F2A57BD00A70F6F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		6CA435AD2F2A57BD00A70F6F /* HighlanderHomesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlanderHomesApp.swift; sourceTree = "<group>"; };
+		6CA435B02F2A57BD00A70F6F /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		6CA435B22F2A57BD00A70F6F /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		6CA435B62F2A57BD00A70F6F /* Contractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Contractor.swift; sourceTree = "<group>"; };
+		6CA435B72F2A57BD00A70F6F /* Expense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Expense.swift; sourceTree = "<group>"; };
+		6CA435B82F2A57BD00A70F6F /* FeedEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedEvent.swift; sourceTree = "<group>"; };
+		6CA435B92F2A57BD00A70F6F /* MaintenanceRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceRequest.swift; sourceTree = "<group>"; };
+		6CA435BA2F2A57BD00A70F6F /* Property.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Property.swift; sourceTree = "<group>"; };
+		6CA435BB2F2A57BD00A70F6F /* RentPayment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RentPayment.swift; sourceTree = "<group>"; };
+		6CA435BC2F2A57BD00A70F6F /* Tenant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tenant.swift; sourceTree = "<group>"; };
+		6CA435BF2F2A57BD00A70F6F /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		6CA435C12F2A57BD00A70F6F /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		6CA435C62F2A57BD00A70F6F /* CommandCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandCenterView.swift; sourceTree = "<group>"; };
+		6CA435C82F2A57BD00A70F6F /* MaintenanceFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceFeedView.swift; sourceTree = "<group>"; };
+		6CA435CA2F2A57BD00A70F6F /* QuickEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickEntryView.swift; sourceTree = "<group>"; };
+		6CA435CC2F2A57BD00A70F6F /* TriageHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TriageHubView.swift; sourceTree = "<group>"; };
+		6CA435CE2F2A57BD00A70F6F /* PropertyVaultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyVaultView.swift; sourceTree = "<group>"; };
+		6CA435D12F2A57BD00A70F6F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6CA4357D2F2A56CD00A70F6F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CA4358C2F2A56CE00A70F6F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CA435962F2A56CE00A70F6F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		6CA435772F2A56CD00A70F6F = {
+			isa = PBXGroup;
+			children = (
+				6CA435D22F2A57BD00A70F6F /* HighlanderHomes-iOS */,
+				6CA435812F2A56CD00A70F6F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6CA435812F2A56CD00A70F6F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435802F2A56CD00A70F6F /* HighlanderHomes.app */,
+				6CA4358F2F2A56CE00A70F6F /* HighlanderHomesTests.xctest */,
+				6CA435992F2A56CE00A70F6F /* HighlanderHomesUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6CA435AE2F2A57BD00A70F6F /* App */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435AC2F2A57BD00A70F6F /* ContentView.swift */,
+				6CA435AD2F2A57BD00A70F6F /* HighlanderHomesApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		6CA435AF2F2A57BD00A70F6F /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		6CA435B12F2A57BD00A70F6F /* Haptics */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435B02F2A57BD00A70F6F /* HapticManager.swift */,
+			);
+			path = Haptics;
+			sourceTree = "<group>";
+		};
+		6CA435B32F2A57BD00A70F6F /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435B22F2A57BD00A70F6F /* Theme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		6CA435B42F2A57BD00A70F6F /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		6CA435B52F2A57BD00A70F6F /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435AF2F2A57BD00A70F6F /* Extensions */,
+				6CA435B12F2A57BD00A70F6F /* Haptics */,
+				6CA435B32F2A57BD00A70F6F /* Theme */,
+				6CA435B42F2A57BD00A70F6F /* Utilities */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		6CA435BD2F2A57BD00A70F6F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435B62F2A57BD00A70F6F /* Contractor.swift */,
+				6CA435B72F2A57BD00A70F6F /* Expense.swift */,
+				6CA435B82F2A57BD00A70F6F /* FeedEvent.swift */,
+				6CA435B92F2A57BD00A70F6F /* MaintenanceRequest.swift */,
+				6CA435BA2F2A57BD00A70F6F /* Property.swift */,
+				6CA435BB2F2A57BD00A70F6F /* RentPayment.swift */,
+				6CA435BC2F2A57BD00A70F6F /* Tenant.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		6CA435BE2F2A57BD00A70F6F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		6CA435C02F2A57BD00A70F6F /* API */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435BF2F2A57BD00A70F6F /* APIService.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
+		6CA435C22F2A57BD00A70F6F /* LocalStorage */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435C12F2A57BD00A70F6F /* SyncService.swift */,
+			);
+			path = LocalStorage;
+			sourceTree = "<group>";
+		};
+		6CA435C32F2A57BD00A70F6F /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435C02F2A57BD00A70F6F /* API */,
+				6CA435C22F2A57BD00A70F6F /* LocalStorage */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		6CA435C42F2A57BD00A70F6F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		6CA435C52F2A57BD00A70F6F /* Components */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		6CA435C72F2A57BD00A70F6F /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435C62F2A57BD00A70F6F /* CommandCenterView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		6CA435C92F2A57BD00A70F6F /* Feed */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435C82F2A57BD00A70F6F /* MaintenanceFeedView.swift */,
+			);
+			path = Feed;
+			sourceTree = "<group>";
+		};
+		6CA435CB2F2A57BD00A70F6F /* QuickEntry */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435CA2F2A57BD00A70F6F /* QuickEntryView.swift */,
+			);
+			path = QuickEntry;
+			sourceTree = "<group>";
+		};
+		6CA435CD2F2A57BD00A70F6F /* Triage */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435CC2F2A57BD00A70F6F /* TriageHubView.swift */,
+			);
+			path = Triage;
+			sourceTree = "<group>";
+		};
+		6CA435CF2F2A57BD00A70F6F /* Vault */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435CE2F2A57BD00A70F6F /* PropertyVaultView.swift */,
+			);
+			path = Vault;
+			sourceTree = "<group>";
+		};
+		6CA435D02F2A57BD00A70F6F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435C52F2A57BD00A70F6F /* Components */,
+				6CA435C72F2A57BD00A70F6F /* Dashboard */,
+				6CA435C92F2A57BD00A70F6F /* Feed */,
+				6CA435CB2F2A57BD00A70F6F /* QuickEntry */,
+				6CA435CD2F2A57BD00A70F6F /* Triage */,
+				6CA435CF2F2A57BD00A70F6F /* Vault */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		6CA435D22F2A57BD00A70F6F /* HighlanderHomes-iOS */ = {
+			isa = PBXGroup;
+			children = (
+				6CA435AE2F2A57BD00A70F6F /* App */,
+				6CA435B52F2A57BD00A70F6F /* Core */,
+				6CA435BD2F2A57BD00A70F6F /* Models */,
+				6CA435BE2F2A57BD00A70F6F /* Resources */,
+				6CA435C32F2A57BD00A70F6F /* Services */,
+				6CA435C42F2A57BD00A70F6F /* ViewModels */,
+				6CA435D02F2A57BD00A70F6F /* Views */,
+				6CA435D12F2A57BD00A70F6F /* README.md */,
+			);
+			path = "HighlanderHomes-iOS";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6CA4357F2F2A56CD00A70F6F /* HighlanderHomes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6CA435A32F2A56CE00A70F6F /* Build configuration list for PBXNativeTarget "HighlanderHomes" */;
+			buildPhases = (
+				6CA4357C2F2A56CD00A70F6F /* Sources */,
+				6CA4357D2F2A56CD00A70F6F /* Frameworks */,
+				6CA4357E2F2A56CD00A70F6F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HighlanderHomes;
+			packageProductDependencies = (
+			);
+			productName = HighlanderHomes;
+			productReference = 6CA435802F2A56CD00A70F6F /* HighlanderHomes.app */;
+			productType = "com.apple.product-type.application";
+		};
+		6CA4358E2F2A56CE00A70F6F /* HighlanderHomesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6CA435A62F2A56CE00A70F6F /* Build configuration list for PBXNativeTarget "HighlanderHomesTests" */;
+			buildPhases = (
+				6CA4358B2F2A56CE00A70F6F /* Sources */,
+				6CA4358C2F2A56CE00A70F6F /* Frameworks */,
+				6CA4358D2F2A56CE00A70F6F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6CA435912F2A56CE00A70F6F /* PBXTargetDependency */,
+			);
+			name = HighlanderHomesTests;
+			packageProductDependencies = (
+			);
+			productName = HighlanderHomesTests;
+			productReference = 6CA4358F2F2A56CE00A70F6F /* HighlanderHomesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		6CA435982F2A56CE00A70F6F /* HighlanderHomesUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6CA435A92F2A56CE00A70F6F /* Build configuration list for PBXNativeTarget "HighlanderHomesUITests" */;
+			buildPhases = (
+				6CA435952F2A56CE00A70F6F /* Sources */,
+				6CA435962F2A56CE00A70F6F /* Frameworks */,
+				6CA435972F2A56CE00A70F6F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6CA4359B2F2A56CE00A70F6F /* PBXTargetDependency */,
+			);
+			name = HighlanderHomesUITests;
+			packageProductDependencies = (
+			);
+			productName = HighlanderHomesUITests;
+			productReference = 6CA435992F2A56CE00A70F6F /* HighlanderHomesUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6CA435782F2A56CD00A70F6F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					6CA4357F2F2A56CD00A70F6F = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					6CA4358E2F2A56CE00A70F6F = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 6CA4357F2F2A56CD00A70F6F;
+					};
+					6CA435982F2A56CE00A70F6F = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 6CA4357F2F2A56CD00A70F6F;
+					};
+				};
+			};
+			buildConfigurationList = 6CA4357B2F2A56CD00A70F6F /* Build configuration list for PBXProject "HighlanderHomes" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 6CA435772F2A56CD00A70F6F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 6CA435812F2A56CD00A70F6F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6CA4357F2F2A56CD00A70F6F /* HighlanderHomes */,
+				6CA4358E2F2A56CE00A70F6F /* HighlanderHomesTests */,
+				6CA435982F2A56CE00A70F6F /* HighlanderHomesUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6CA4357E2F2A56CD00A70F6F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CA435E52F2A57BD00A70F6F /* README.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CA4358D2F2A56CE00A70F6F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CA435972F2A56CE00A70F6F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6CA4357C2F2A56CD00A70F6F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CA435D32F2A57BD00A70F6F /* APIService.swift in Sources */,
+				6CA435D42F2A57BD00A70F6F /* Property.swift in Sources */,
+				6CA435D52F2A57BD00A70F6F /* HighlanderHomesApp.swift in Sources */,
+				6CA435D62F2A57BD00A70F6F /* ContentView.swift in Sources */,
+				6CA435D72F2A57BD00A70F6F /* Theme.swift in Sources */,
+				6CA435D82F2A57BD00A70F6F /* TriageHubView.swift in Sources */,
+				6CA435D92F2A57BD00A70F6F /* FeedEvent.swift in Sources */,
+				6CA435DA2F2A57BD00A70F6F /* CommandCenterView.swift in Sources */,
+				6CA435DB2F2A57BD00A70F6F /* PropertyVaultView.swift in Sources */,
+				6CA435DC2F2A57BD00A70F6F /* SyncService.swift in Sources */,
+				6CA435DD2F2A57BD00A70F6F /* Expense.swift in Sources */,
+				6CA435DE2F2A57BD00A70F6F /* Tenant.swift in Sources */,
+				6CA435DF2F2A57BD00A70F6F /* MaintenanceFeedView.swift in Sources */,
+				6CA435E02F2A57BD00A70F6F /* QuickEntryView.swift in Sources */,
+				6CA435E12F2A57BD00A70F6F /* HapticManager.swift in Sources */,
+				6CA435E22F2A57BD00A70F6F /* MaintenanceRequest.swift in Sources */,
+				6CA435E32F2A57BD00A70F6F /* Contractor.swift in Sources */,
+				6CA435E42F2A57BD00A70F6F /* RentPayment.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CA4358B2F2A56CE00A70F6F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6CA435952F2A56CE00A70F6F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6CA435912F2A56CE00A70F6F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6CA4357F2F2A56CD00A70F6F /* HighlanderHomes */;
+			targetProxy = 6CA435902F2A56CE00A70F6F /* PBXContainerItemProxy */;
+		};
+		6CA4359B2F2A56CE00A70F6F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6CA4357F2F2A56CD00A70F6F /* HighlanderHomes */;
+			targetProxy = 6CA4359A2F2A56CE00A70F6F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		6CA435A12F2A56CE00A70F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		6CA435A22F2A56CE00A70F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		6CA435A42F2A56CE00A70F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = paukuntong.HighlanderHomes;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		6CA435A52F2A56CE00A70F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = paukuntong.HighlanderHomes;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		6CA435A72F2A56CE00A70F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = paukuntong.HighlanderHomesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HighlanderHomes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HighlanderHomes";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		6CA435A82F2A56CE00A70F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = paukuntong.HighlanderHomesTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HighlanderHomes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HighlanderHomes";
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		6CA435AA2F2A56CE00A70F6F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = paukuntong.HighlanderHomesUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = HighlanderHomes;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		6CA435AB2F2A56CE00A70F6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FQR3RAH9NH;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = paukuntong.HighlanderHomesUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = HighlanderHomes;
+				XROS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6CA4357B2F2A56CD00A70F6F /* Build configuration list for PBXProject "HighlanderHomes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CA435A12F2A56CE00A70F6F /* Debug */,
+				6CA435A22F2A56CE00A70F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6CA435A32F2A56CE00A70F6F /* Build configuration list for PBXNativeTarget "HighlanderHomes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CA435A42F2A56CE00A70F6F /* Debug */,
+				6CA435A52F2A56CE00A70F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6CA435A62F2A56CE00A70F6F /* Build configuration list for PBXNativeTarget "HighlanderHomesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CA435A72F2A56CE00A70F6F /* Debug */,
+				6CA435A82F2A56CE00A70F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6CA435A92F2A56CE00A70F6F /* Build configuration list for PBXNativeTarget "HighlanderHomesUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CA435AA2F2A56CE00A70F6F /* Debug */,
+				6CA435AB2F2A56CE00A70F6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 6CA435782F2A56CD00A70F6F /* Project object */;
+}
