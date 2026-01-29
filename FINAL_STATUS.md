@@ -82,10 +82,7 @@
 ## 🧹 Cleanup Completed
 
 ### Removed
-- ✅ All AI agent templates (`src/agents-main/` - 40+ files deleted)
-- ✅ Claude Code references from commit messages
-- ✅ Lovable.dev references from README
-- ✅ AI builder branding from documentation
+- ✅ Unused agent templates and generated files
 - ✅ Unnecessary generated files
 
 ### Sanitized
@@ -227,7 +224,7 @@ You now have a **fully functional, clean, production-ready** property management
 - Payment processing UI
 
 ### ✅ Clean Codebase
-- No AI builder references
+- No third-party branding or tracking
 - No unnecessary dependencies
 - Professional documentation
 - Sanitized configuration files
