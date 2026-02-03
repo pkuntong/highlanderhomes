@@ -148,19 +148,30 @@ class ConvexDataService: ObservableObject {
 
     // MARK: - Real-time Subscriptions
     func subscribeToUpdates() {
+        guard let userId = currentUserId else { return }
+
         // Subscribe to properties
-        client.subscribe(to: ConvexConfig.Functions.getProperties) { [weak self] (props: [ConvexProperty]) in
+        client.subscribe(
+            to: ConvexConfig.Functions.getProperties,
+            args: ["userId": userId]
+        ) { [weak self] (props: [ConvexProperty]) in
             self?.properties = props
         }
 
         // Subscribe to maintenance requests
-        client.subscribe(to: ConvexConfig.Functions.getMaintenanceRequests) { [weak self] (reqs: [ConvexMaintenanceRequest]) in
+        client.subscribe(
+            to: ConvexConfig.Functions.getMaintenanceRequests,
+            args: ["userId": userId]
+        ) { [weak self] (reqs: [ConvexMaintenanceRequest]) in
             self?.maintenanceRequests = reqs
             self?.generateFeedEvents()
         }
 
         // Subscribe to tenants
-        client.subscribe(to: ConvexConfig.Functions.getTenants) { [weak self] (tens: [ConvexTenant]) in
+        client.subscribe(
+            to: ConvexConfig.Functions.getTenants,
+            args: ["userId": userId]
+        ) { [weak self] (tens: [ConvexTenant]) in
             self?.tenants = tens
         }
     }

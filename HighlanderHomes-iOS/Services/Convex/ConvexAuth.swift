@@ -106,6 +106,8 @@ class ConvexAuth: ObservableObject {
 
     // MARK: - Apple Sign In
     func signInWithApple(credential: ASAuthorizationAppleIDCredential, nonce: String) async throws {
+        _ = nonce // Nonce is used for the Apple request itself; backend does not require it
+
         guard let identityToken = credential.identityToken,
               let tokenString = String(data: identityToken, encoding: .utf8) else {
             throw ConvexError.notAuthenticated
@@ -124,8 +126,7 @@ class ConvexAuth: ObservableObject {
             args: [
                 "identityToken": tokenString,
                 "name": name ?? "",
-                "email": credential.email ?? "",
-                "nonce": nonce
+                "email": credential.email ?? ""
             ]
         )
 
@@ -135,10 +136,23 @@ class ConvexAuth: ObservableObject {
 
     // MARK: - Token Verification
     private func verifyToken() async {
+        guard let userId = currentUser?.id else {
+            clearAuth()
+            return
+        }
+
         do {
-            let user: ConvexUser = try await client.query(ConvexConfig.Functions.getCurrentUser)
-            currentUser = user
-            isAuthenticated = true
+            let user: ConvexUser? = try await client.query(
+                ConvexConfig.Functions.getCurrentUser,
+                args: ["userId": userId]
+            )
+
+            if let user {
+                currentUser = user
+                isAuthenticated = true
+            } else {
+                clearAuth()
+            }
         } catch {
             // Token invalid, clear auth
             clearAuth()
@@ -147,7 +161,11 @@ class ConvexAuth: ObservableObject {
 
     // MARK: - Update Profile
     func updateProfile(name: String?, avatarURL: String?) async throws {
-        var args: [String: Any] = [:]
+        guard let userId = currentUser?.id else {
+            throw ConvexError.notAuthenticated
+        }
+
+        var args: [String: Any] = ["userId": userId]
         if let name = name { args["name"] = name }
         if let avatarURL = avatarURL { args["avatarURL"] = avatarURL }
 
