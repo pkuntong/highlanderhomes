@@ -11,15 +11,13 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     // TODO: Get userId from auth token in production
-    if (!args.userId) {
-      return [];
+    // If userId is present, scope to that user; otherwise return all (useful for preview/demo).
+    let query = ctx.db.query("properties");
+    if (args.userId) {
+      query = query.withIndex("by_user", (q) => q.eq("userId", args.userId!));
     }
 
-    const properties = await ctx.db
-      .query("properties")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId!))
-      .order("desc")
-      .collect();
+    const properties = await query.order("desc").collect();
 
     return properties.map((prop) => ({
       _id: prop._id,

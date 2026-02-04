@@ -8,6 +8,11 @@ export default defineSchema({
     email: v.string(),
     avatarURL: v.optional(v.string()),
     isPremium: v.boolean(),
+    passwordHash: v.optional(v.string()),
+    passwordSalt: v.optional(v.string()),
+    emailVerified: v.optional(v.boolean()),
+    emailVerificationCode: v.optional(v.string()),
+    emailVerificationExpiresAt: v.optional(v.number()),
     createdAt: v.number(),
     lastLoginAt: v.optional(v.number()),
   })
