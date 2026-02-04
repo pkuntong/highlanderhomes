@@ -19,12 +19,12 @@ import { api } from '../convex/_generated/api.js';
 
 // Firebase configuration (from your .env or firebase.js)
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || "AIzaSyAmSdCC1eiwrs7k-xGU2ebQroQJnuIL78o",
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "highlanderhomes-4b1f3.firebaseapp.com",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "highlanderhomes-4b1f3",
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "highlanderhomes-4b1f3.firebasestorage.app",
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "665607510591",
-  appId: process.env.VITE_FIREBASE_APP_ID || "1:665607510591:web:57d705c120dbbd3cfab68a",
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID,
 };
 
 // Convex configuration
@@ -57,7 +57,7 @@ async function migrateData() {
     console.log("📦 Fetching properties from Firebase...");
     const propertiesSnapshot = await getDocs(collection(db, "properties"));
     const firebaseProperties = [];
-    
+
     propertiesSnapshot.forEach((doc) => {
       const data = doc.data();
       firebaseProperties.push({
@@ -90,7 +90,7 @@ async function migrateData() {
         properties: firebaseProperties,
         userId: userId,
       });
-      
+
       const successCount = propertyResults.filter(r => r.success).length;
       const failCount = propertyResults.filter(r => !r.success).length;
       console.log(`  ✅ Imported: ${successCount}`);
@@ -107,7 +107,7 @@ async function migrateData() {
     console.log("📦 Fetching tenants from Firebase...");
     const tenantsSnapshot = await getDocs(collection(db, "tenants"));
     const firebaseTenants = [];
-    
+
     tenantsSnapshot.forEach((doc) => {
       const data = doc.data();
       firebaseTenants.push({
@@ -138,7 +138,7 @@ async function migrateData() {
     console.log("📦 Fetching maintenance requests from Firebase...");
     const maintenanceSnapshot = await getDocs(collection(db, "maintenanceRequests"));
     const firebaseRequests = [];
-    
+
     maintenanceSnapshot.forEach((doc) => {
       const data = doc.data();
       firebaseRequests.push({
@@ -163,12 +163,12 @@ async function migrateData() {
     }
 
     // Summary
-    console.log("=" .repeat(50));
+    console.log("=".repeat(50));
     console.log("📊 Migration Summary:");
     console.log(`   Properties: ${firebaseProperties.length} migrated`);
     console.log(`   Tenants: ${firebaseTenants.length} found (require property mapping)`);
     console.log(`   Maintenance: ${firebaseRequests.length} found (require property mapping)`);
-    console.log("=" .repeat(50));
+    console.log("=".repeat(50));
     console.log("\n✅ Migration complete!");
     console.log("\n📌 Next steps:");
     console.log("   1. Check your Convex dashboard to verify the data");
