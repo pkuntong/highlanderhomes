@@ -54,6 +54,7 @@ class ConvexAuth: ObservableObject {
     private func clearAuth() {
         UserDefaults.standard.removeObject(forKey: tokenKey)
         UserDefaults.standard.removeObject(forKey: userKey)
+        UserDefaults.standard.removeObject(forKey: ConvexConfig.dataOwnerUserIdDefaultsKey)
         client.clearAuth()
         currentUser = nil
         isAuthenticated = false
@@ -72,9 +73,12 @@ class ConvexAuth: ObservableObject {
             ]
         )
 
-        saveAuth(token: response.token, user: response.user)
+        let verificationSent = response.verificationSent ?? false
+        if !verificationSent {
+            saveAuth(token: response.token, user: response.user)
+        }
         HapticManager.shared.success()
-        return response.verificationSent ?? false
+        return verificationSent
     }
 
     func signIn(email: String, password: String) async throws {
@@ -206,18 +210,14 @@ class ConvexAuth: ObservableObject {
     }
 
     func verifyEmail(code: String, email: String) async throws {
-        let user: ConvexUser = try await client.action(
+        let response: AuthResponse = try await client.action(
             "auth:verifyEmail",
             args: [
                 "email": email,
                 "code": code
             ]
         )
-
-        currentUser = user
-        if let userData = try? JSONEncoder().encode(user) {
-            UserDefaults.standard.set(userData, forKey: userKey)
-        }
+        saveAuth(token: response.token, user: response.user)
     }
 }
 
@@ -255,6 +255,38 @@ struct ConvexUser: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id = "_id"
         case name, email, avatarURL, isPremium, emailVerified, createdAt, lastLoginAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
+        avatarURL = try container.decodeIfPresent(String.self, forKey: .avatarURL)
+        isPremium = try container.decodeIfPresent(Bool.self, forKey: .isPremium) ?? false
+        emailVerified = try container.decodeIfPresent(Bool.self, forKey: .emailVerified)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        lastLoginAt = try container.decodeIfPresent(Date.self, forKey: .lastLoginAt)
+    }
+
+    init(
+        id: String,
+        name: String,
+        email: String,
+        avatarURL: String?,
+        isPremium: Bool,
+        emailVerified: Bool?,
+        createdAt: Date,
+        lastLoginAt: Date?
+    ) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.avatarURL = avatarURL
+        self.isPremium = isPremium
+        self.emailVerified = emailVerified
+        self.createdAt = createdAt
+        self.lastLoginAt = lastLoginAt
     }
 }
 

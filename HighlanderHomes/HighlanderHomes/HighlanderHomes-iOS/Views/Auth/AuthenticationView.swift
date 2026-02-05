@@ -151,13 +151,11 @@ struct AuthenticationView: View {
                         .opacity(isFormValid ? 1 : 0.6)
 
                         // Verify Email (if needed)
-                        if !isSignUp {
-                            Button("Verify Email") {
-                                showVerifyEmail = true
-                            }
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Theme.Colors.emerald)
+                        Button("Verify Email") {
+                            showVerifyEmail = true
                         }
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Theme.Colors.emerald)
 
                         // Divider
                         HStack(spacing: Theme.Spacing.md) {
@@ -254,8 +252,10 @@ struct AuthenticationView: View {
                 let verificationSent = try await convexAuth.signUp(email: email, password: password, name: name)
                 if verificationSent {
                     successMessage = "Verification code sent to your email."
+                    showVerifyEmail = true
                 } else {
                     errorMessage = "Couldn't send verification email. You can resend it from Profile."
+                    showVerifyEmail = true
                 }
             } else {
                 try await convexAuth.signIn(email: email, password: password)

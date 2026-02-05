@@ -7,11 +7,13 @@ enum ConvexConfig {
     // Get this from: npx convex dev (look for "Convex deployment URL")
     // Format: https://YOUR_DEPLOYMENT_NAME.convex.cloud
     static let deploymentURL = "https://successful-goldfinch-551.convex.cloud"
+    // Keep in sync with the Convex JS client version used in this repo.
+    static let apiVersion = "1.31.6"
 
     // Optional: set this to a specific userId from Convex to view existing data
     // Example: "js7f3g0...". Leave empty to use the signed-in user.
     static let dataOwnerUserIdDefaultsKey = "convex_data_owner_user_id"
-    static let defaultDataOwnerUserId: String = "k17ag6h0fwn2m5qh9ga8fav1nn8034yb"
+    static let defaultDataOwnerUserId: String = ""
 
     static var dataOwnerUserId: String {
         let stored = UserDefaults.standard.string(forKey: dataOwnerUserIdDefaultsKey) ?? ""
@@ -39,6 +41,8 @@ enum ConvexConfig {
         static let getMaintenanceRequests = "maintenanceRequests:list"
         static let getContractors = "contractors:list"
         static let getFeedEvents = "feedEvents:list"
+        static let getRentPayments = "rentPayments:list"
+        static let getExpenses = "expenses:list"
         static let getCurrentUser = "users:current"
 
         // Mutations (write data)
@@ -51,6 +55,8 @@ enum ConvexConfig {
         static let updateMaintenanceStatus = "maintenanceRequests:updateStatus"
         static let assignContractor = "maintenanceRequests:assignContractor"
         static let createContractor = "contractors:create"
+        static let createRentPayment = "rentPayments:create"
+        static let createExpense = "expenses:create"
         static let createUser = "users:create"
         static let updateUser = "users:update"
         static let deleteUser = "users:deleteAccount"

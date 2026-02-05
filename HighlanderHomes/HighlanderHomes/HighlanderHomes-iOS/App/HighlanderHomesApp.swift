@@ -137,12 +137,13 @@ struct SplashView: View {
 // MARK: - App State
 @MainActor
 class AppState: ObservableObject {
-    @Published var selectedTab: Tab = .feed
+    @Published var selectedTab: Tab = .transactions
     @Published var showingQuickEntry: Bool = false
     @Published var isModalPresented: Bool = false
     @Published var notificationBadgeCount: Int = 3
 
     enum Tab: Int, CaseIterable {
+        case transactions
         case feed
         case triage
         case dashboard
@@ -150,6 +151,7 @@ class AppState: ObservableObject {
 
         var title: String {
             switch self {
+            case .transactions: return "Transactions"
             case .feed: return "Feed"
             case .triage: return "Triage"
             case .dashboard: return "Command"
@@ -159,6 +161,7 @@ class AppState: ObservableObject {
 
         var icon: String {
             switch self {
+            case .transactions: return "dollarsign.circle.fill"
             case .feed: return "rectangle.stack.fill"
             case .triage: return "wrench.and.screwdriver.fill"
             case .dashboard: return "chart.bar.fill"

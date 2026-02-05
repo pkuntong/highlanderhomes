@@ -111,11 +111,11 @@ export default defineSchema({
   // Rent Payments table
   rentPayments: defineTable({
     propertyId: v.id("properties"),
-    tenantId: v.id("tenants"),
+    tenantId: v.optional(v.id("tenants")),
     amount: v.number(),
     paymentDate: v.number(),
-    dueDate: v.number(),
-    paymentMethod: v.string(), // "check", "bank_transfer", "cash", etc.
+    dueDate: v.optional(v.number()),
+    paymentMethod: v.optional(v.string()), // "check", "bank_transfer", "cash", etc.
     status: v.string(), // "pending", "completed", "overdue", "cancelled"
     transactionId: v.optional(v.string()),
     notes: v.optional(v.string()),

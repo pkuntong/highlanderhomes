@@ -5,10 +5,15 @@ import SwiftData
 struct QuickEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject var dataService: ConvexDataService
 
     @State private var entryMode: EntryMode = .expense
     @State private var entries: [QuickEntryRow] = []
     @State private var isAddingRow = false
+    @State private var saveMessage: String?
+    @State private var errorMessage: String?
+    @State private var selectedPropertyId: String = ""
+    @State private var selectedTenantId: String = ""
     @FocusState private var focusedField: FocusedField?
 
     enum EntryMode: String, CaseIterable {
@@ -50,6 +55,29 @@ struct QuickEntryView: View {
                     EntryModeSelector(selectedMode: $entryMode)
                         .padding(.horizontal, Theme.Spacing.md)
                         .padding(.top, Theme.Spacing.sm)
+
+                    if entryMode == .income || entryMode == .expense {
+                        VStack(spacing: Theme.Spacing.sm) {
+                            Picker("Property", selection: $selectedPropertyId) {
+                                Text(entryMode == .income ? "Select Property" : "None")
+                                    .tag("")
+                                ForEach(dataService.properties, id: \.id) { property in
+                                    Text(property.name).tag(property.id)
+                                }
+                            }
+
+                            if entryMode == .income {
+                                Picker("Tenant (Optional)", selection: $selectedTenantId) {
+                                    Text("None").tag("")
+                                    ForEach(dataService.tenants.filter { $0.propertyId == selectedPropertyId }, id: \.id) { tenant in
+                                        Text(tenant.fullName).tag(tenant.id)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.top, Theme.Spacing.sm)
+                    }
 
                     // Column Headers
                     ColumnHeaders(mode: entryMode)
@@ -136,6 +164,32 @@ struct QuickEntryView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if let message = saveMessage {
+                Text(message)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background {
+                        Capsule().fill(Theme.Colors.slate800.opacity(0.9))
+                    }
+                    .padding(.bottom, 80)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if let error = errorMessage {
+                Text(error)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background {
+                        Capsule().fill(Theme.Colors.alertRed.opacity(0.9))
+                    }
+                    .padding(.bottom, 40)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
     }
 
     // MARK: - Computed Properties
@@ -187,16 +241,71 @@ struct QuickEntryView: View {
     }
 
     private func saveEntries() {
-        for entry in entries where entry.isValid {
-            let expense = Expense(
-                title: entry.description,
-                amount: entry.amount ?? 0,
-                category: entry.category ?? .other,
-                date: entry.date
-            )
-            modelContext.insert(expense)
+        saveMessage = nil
+        errorMessage = nil
+
+        guard !entries.isEmpty else { return }
+
+        switch entryMode {
+        case .income:
+            guard !selectedPropertyId.isEmpty else {
+                withAnimation { errorMessage = "Select a property first." }
+                return
+            }
+        default:
+            break
         }
-        HapticManager.shared.reward()
+
+        Task {
+            do {
+                var savedCount = 0
+                for entry in entries where entry.isValid {
+                    switch entryMode {
+                    case .expense, .maintenance:
+                        let category = entryMode == .maintenance ? "maintenance" : (entry.category?.rawValue.lowercased() ?? "other")
+                        let input = ConvexExpenseInput(
+                            propertyId: selectedPropertyId.isEmpty ? nil : selectedPropertyId,
+                            title: entry.description,
+                            description: nil,
+                            amount: entry.amount ?? 0,
+                            category: category,
+                            date: entry.date,
+                            isRecurring: false,
+                            recurringFrequency: nil,
+                            receiptURL: nil,
+                            vendor: nil,
+                            notes: nil
+                        )
+                        _ = try await dataService.createExpense(input)
+                        savedCount += 1
+
+                    case .income:
+                        let input = ConvexRentPaymentInput(
+                            propertyId: selectedPropertyId,
+                            tenantId: selectedTenantId.isEmpty ? nil : selectedTenantId,
+                            amount: entry.amount ?? 0,
+                            paymentDate: entry.date,
+                            paymentMethod: nil,
+                            status: "completed",
+                            transactionId: nil,
+                            notes: nil
+                        )
+                        _ = try await dataService.createRentPayment(input)
+                        savedCount += 1
+                    }
+                }
+
+                withAnimation {
+                    saveMessage = "Saved \(savedCount) entries"
+                }
+                HapticManager.shared.reward()
+            } catch {
+                withAnimation {
+                    errorMessage = "Save failed: \(error.localizedDescription)"
+                }
+                HapticManager.shared.error()
+            }
+        }
     }
 
     private func clearEntries() {
@@ -205,6 +314,8 @@ struct QuickEntryView: View {
             entries.removeAll()
             addNewRow()
         }
+        saveMessage = nil
+        errorMessage = nil
     }
 
     private func moveToPreviousField() {

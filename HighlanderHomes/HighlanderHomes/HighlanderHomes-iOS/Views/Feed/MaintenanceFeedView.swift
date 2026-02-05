@@ -1,5 +1,7 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
+import UIKit
 
 struct MaintenanceFeedView: View {
     @EnvironmentObject var dataService: ConvexDataService
@@ -69,6 +71,7 @@ struct FeedHeader: View {
     @Binding var showingFilters: Bool
     @State private var notificationCount = 3
     @State private var showingProfile = false
+    @State private var avatarImage: UIImage?
 
     var body: some View {
         HStack {
@@ -105,7 +108,13 @@ struct FeedHeader: View {
                             .fill(Theme.Colors.emerald.opacity(0.2))
                             .frame(width: 36, height: 36)
 
-                        if let user = convexAuth.currentUser {
+                        if let avatarImage {
+                            Image(uiImage: avatarImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 32, height: 32)
+                                .clipShape(Circle())
+                        } else if let user = convexAuth.currentUser {
                             Text(user.initials)
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(Theme.Colors.emerald)
@@ -125,6 +134,27 @@ struct FeedHeader: View {
         .onChange(of: showingProfile) { newValue in
             appState.isModalPresented = newValue
         }
+        .onAppear {
+            if let avatarURL = convexAuth.currentUser?.avatarURL,
+               let image = imageFromDataURL(avatarURL) {
+                avatarImage = image
+            }
+        }
+        .onChange(of: convexAuth.currentUser?.avatarURL) { newValue in
+            if let avatarURL = newValue,
+               let image = imageFromDataURL(avatarURL) {
+                avatarImage = image
+            } else {
+                avatarImage = nil
+            }
+        }
+    }
+
+    private func imageFromDataURL(_ dataURL: String) -> UIImage? {
+        guard let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
+        let base64 = String(dataURL[dataURL.index(after: commaIndex)...])
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
     }
 }
 
@@ -476,6 +506,10 @@ struct ProfileSheet: View {
     @State private var showDeleteConfirm = false
     @State private var showVerifySheet = false
     @State private var verificationMessage: String?
+    @State private var saveMessage: String?
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var avatarImage: UIImage?
+    @State private var isUploadingAvatar = false
 
     var body: some View {
         NavigationStack {
@@ -483,145 +517,175 @@ struct ProfileSheet: View {
                 Theme.Colors.background
                     .ignoresSafeArea()
 
-                VStack(spacing: Theme.Spacing.xl) {
-                    // Profile Avatar
-                    ZStack {
-                        Circle()
-                            .fill(Theme.Gradients.emeraldGlow)
-                            .frame(width: 100, height: 100)
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.xl) {
+                        // Profile Avatar
+                        PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                            ZStack {
+                                Circle()
+                                    .fill(Theme.Gradients.emeraldGlow)
+                                    .frame(width: 100, height: 100)
 
+                                if let avatarImage {
+                                    Image(uiImage: avatarImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 96, height: 96)
+                                        .clipShape(Circle())
+                                } else if let user = convexAuth.currentUser {
+                                    Text(user.initials)
+                                        .font(.system(size: 36, weight: .bold))
+                                        .foregroundColor(.white)
+                                } else {
+                                    Image(systemName: "person.fill")
+                                        .font(.system(size: 44))
+                                        .foregroundColor(.white)
+                                }
+
+                                if isUploadingAvatar {
+                                    Circle()
+                                        .fill(Color.black.opacity(0.4))
+                                        .frame(width: 100, height: 100)
+                                        .overlay(ProgressView().tint(.white))
+                                }
+                            }
+                        }
+                        .padding(.top, Theme.Spacing.xl)
+                        .onChange(of: selectedPhotoItem) { _ in
+                            Task {
+                                await updateAvatarFromSelection()
+                            }
+                        }
+
+                        // User Info
                         if let user = convexAuth.currentUser {
-                            Text(user.initials)
-                                .font(.system(size: 36, weight: .bold))
-                                .foregroundColor(.white)
-                        } else {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 44))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .padding(.top, Theme.Spacing.xl)
-
-                    // User Info
-                    if let user = convexAuth.currentUser {
-                        VStack(spacing: Theme.Spacing.sm) {
-                            TextField("Full Name", text: $editedName)
-                                .textInputAutocapitalization(.words)
-                                .autocorrectionDisabled()
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background {
-                                    RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                        .fill(Theme.Colors.slate800)
-                                }
-
-                            TextField("Email", text: $editedEmail)
-                                .textInputAutocapitalization(.never)
-                                .keyboardType(.emailAddress)
-                                .autocorrectionDisabled()
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background {
-                                    RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                        .fill(Theme.Colors.slate800)
-                                }
-
-                            if user.isPremium {
-                                Text("Premium Member")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Theme.Colors.gold)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 4)
-                                    .background {
-                                        Capsule()
-                                            .fill(Theme.Colors.gold.opacity(0.15))
-                                    }
-                                    .padding(.top, Theme.Spacing.xs)
-                            }
-
-                            Button {
-                                Task {
-                                    isSaving = true
-                                    do {
-                                        try await convexAuth.updateProfile(
-                                            name: editedName.isEmpty ? user.name : editedName,
-                                            email: editedEmail.isEmpty ? user.email : editedEmail,
-                                            avatarURL: nil
-                                        )
-                                        HapticManager.shared.success()
-                                    } catch {
-                                        HapticManager.shared.error()
-                                    }
-                                    isSaving = false
-                                }
-                            } label: {
-                                HStack {
-                                    if isSaving {
-                                        ProgressView().tint(.white)
-                                    } else {
-                                        Text("Save Changes")
-                                    }
-                                }
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background {
-                                    RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                        .fill(Theme.Colors.emerald)
-                                }
-                            }
-                            .padding(.top, Theme.Spacing.sm)
-                        }
-                        .padding(.horizontal, Theme.Spacing.lg)
-
-                        if user.emailVerified != true {
                             VStack(spacing: Theme.Spacing.sm) {
-                                Text("Email not verified")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Theme.Colors.warningAmber)
+                                TextField("Full Name", text: $editedName)
+                                    .textInputAutocapitalization(.words)
+                                    .autocorrectionDisabled()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.slate800)
+                                    }
 
-                                if let message = verificationMessage {
-                                    Text(message)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(Theme.Colors.textSecondary)
+                                TextField("Email", text: $editedEmail)
+                                    .textInputAutocapitalization(.never)
+                                    .keyboardType(.emailAddress)
+                                    .autocorrectionDisabled()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.slate800)
+                                    }
+
+                                if user.isPremium {
+                                    Text("Premium Member")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Theme.Colors.gold)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 4)
+                                        .background {
+                                            Capsule()
+                                                .fill(Theme.Colors.gold.opacity(0.15))
+                                        }
+                                        .padding(.top, Theme.Spacing.xs)
                                 }
 
                                 Button {
                                     Task {
+                                        isSaving = true
+                                        saveMessage = nil
                                         do {
-                                            try await convexAuth.sendVerificationEmail(email: user.email)
-                                            verificationMessage = "Verification code sent."
+                                            try await convexAuth.updateProfile(
+                                                name: editedName.isEmpty ? user.name : editedName,
+                                                email: editedEmail.isEmpty ? user.email : editedEmail,
+                                                avatarURL: nil
+                                            )
+                                            saveMessage = "Profile updated."
                                             HapticManager.shared.success()
                                         } catch {
-                                            verificationMessage = error.localizedDescription
+                                            saveMessage = error.localizedDescription
                                             HapticManager.shared.error()
                                         }
+                                        isSaving = false
                                     }
                                 } label: {
-                                    Text("Resend Verification Code")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 10)
-                                        .background {
-                                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                                .fill(Theme.Colors.slate700)
+                                    HStack {
+                                        if isSaving {
+                                            ProgressView().tint(.white)
+                                        } else {
+                                            Text("Save Changes")
                                         }
+                                    }
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.emerald)
+                                    }
                                 }
+                                .padding(.top, Theme.Spacing.sm)
 
-                                Button {
-                                    showVerifySheet = true
-                                } label: {
-                                    Text("Enter Verification Code")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(Theme.Colors.emerald)
+                                if let message = saveMessage {
+                                    Text(message)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(message.contains("updated") ? Theme.Colors.emerald : Theme.Colors.alertRed)
                                 }
                             }
                             .padding(.horizontal, Theme.Spacing.lg)
-                            .padding(.top, Theme.Spacing.md)
+
+                            if user.emailVerified != true {
+                                VStack(spacing: Theme.Spacing.sm) {
+                                    Text("Email not verified")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(Theme.Colors.warningAmber)
+
+                                    if let message = verificationMessage {
+                                        Text(message)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(Theme.Colors.textSecondary)
+                                    }
+
+                                    Button {
+                                        Task {
+                                            do {
+                                                try await convexAuth.sendVerificationEmail(email: user.email)
+                                                verificationMessage = "Verification code sent."
+                                                HapticManager.shared.success()
+                                            } catch {
+                                                verificationMessage = error.localizedDescription
+                                                HapticManager.shared.error()
+                                            }
+                                        }
+                                    } label: {
+                                        Text("Resend Verification Code")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background {
+                                                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                                    .fill(Theme.Colors.slate700)
+                                            }
+                                    }
+
+                                    Button {
+                                        showVerifySheet = true
+                                    } label: {
+                                        Text("Enter Verification Code")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(Theme.Colors.emerald)
+                                    }
+                                }
+                                .padding(.horizontal, Theme.Spacing.lg)
+                                .padding(.top, Theme.Spacing.md)
+                            }
                         }
-                    }
 
 #if DEBUG
                     VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
@@ -662,48 +726,47 @@ struct ProfileSheet: View {
                     .padding(.horizontal, Theme.Spacing.lg)
 #endif
 
-                    Spacer()
+                        // Delete Account Button
+                        Button {
+                            showDeleteConfirm = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Delete Account")
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background {
+                                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                    .fill(Theme.Colors.slate700)
+                            }
+                        }
+                        .padding(.horizontal, Theme.Spacing.lg)
 
-                    // Delete Account Button
-                    Button {
-                        showDeleteConfirm = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("Delete Account")
+                        // Sign Out Button
+                        Button {
+                            HapticManager.shared.impact(.medium)
+                            convexAuth.signOut()
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                Text("Sign Out")
+                            }
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background {
+                                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                    .fill(Theme.Colors.alertRed)
+                            }
                         }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background {
-                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                .fill(Theme.Colors.slate700)
-                        }
+                        .padding(.horizontal, Theme.Spacing.lg)
+                        .padding(.bottom, Theme.Spacing.xl)
                     }
-                    .padding(.horizontal, Theme.Spacing.lg)
-
-                    // Sign Out Button
-                    Button {
-                        HapticManager.shared.impact(.medium)
-                        convexAuth.signOut()
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("Sign Out")
-                        }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background {
-                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                .fill(Theme.Colors.alertRed)
-                        }
-                    }
-                    .padding(.horizontal, Theme.Spacing.lg)
-                    .padding(.bottom, Theme.Spacing.xl)
                 }
             }
             .navigationTitle("Profile")
@@ -721,6 +784,10 @@ struct ProfileSheet: View {
             if let user = convexAuth.currentUser {
                 editedName = user.name
                 editedEmail = user.email
+                if let avatarURL = user.avatarURL,
+                   let image = imageFromDataURL(avatarURL) {
+                    avatarImage = image
+                }
             }
         }
         .sheet(isPresented: $showVerifySheet) {
@@ -743,6 +810,36 @@ struct ProfileSheet: View {
         } message: {
             Text("This will permanently delete your account and all data.")
         }
+    }
+
+    private func updateAvatarFromSelection() async {
+        guard let item = selectedPhotoItem else { return }
+        isUploadingAvatar = true
+        defer { isUploadingAvatar = false }
+
+        do {
+            if let data = try await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                avatarImage = image
+                if let dataURL = dataURLFromImage(image) {
+                    try await convexAuth.updateProfile(name: nil, email: nil, avatarURL: dataURL)
+                }
+            }
+        } catch {
+            HapticManager.shared.error()
+        }
+    }
+
+    private func dataURLFromImage(_ image: UIImage) -> String? {
+        guard let jpeg = image.jpegData(compressionQuality: 0.7) else { return nil }
+        return "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
+    }
+
+    private func imageFromDataURL(_ dataURL: String) -> UIImage? {
+        guard let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
+        let base64 = String(dataURL[dataURL.index(after: commaIndex)...])
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
     }
 }
 
@@ -831,6 +928,7 @@ struct VerifyEmailSheet: View {
             }
         }
     }
+
 }
 
 #Preview {

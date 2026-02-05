@@ -53,9 +53,7 @@ class ConvexClient: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        applyAuthHeaderIfNeeded(&request)
 
         let body: [String: Any] = [
             "path": functionName,
@@ -73,17 +71,12 @@ class ConvexClient: ObservableObject {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data) {
-                throw ConvexError.serverError(errorBody.message)
+                throw ConvexError.serverError(errorBody.message ?? "Unknown server error")
             }
             throw ConvexError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-
-        // Convex wraps response in { "value": ... }
-        let wrapper = try decoder.decode(ConvexResponse<T>.self, from: data)
-        return wrapper.value
+        return try decodeResponse(data)
     }
 
     // MARK: - Mutation (Write Data)
@@ -97,9 +90,7 @@ class ConvexClient: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        applyAuthHeaderIfNeeded(&request)
 
         let body: [String: Any] = [
             "path": functionName,
@@ -117,16 +108,12 @@ class ConvexClient: ObservableObject {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data) {
-                throw ConvexError.serverError(errorBody.message)
+                throw ConvexError.serverError(errorBody.message ?? "Unknown server error")
             }
             throw ConvexError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-
-        let wrapper = try decoder.decode(ConvexResponse<T>.self, from: data)
-        return wrapper.value
+        return try decodeResponse(data)
     }
 
     // Mutation that returns void
@@ -148,9 +135,7 @@ class ConvexClient: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        applyAuthHeaderIfNeeded(&request)
 
         let body: [String: Any] = [
             "path": functionName,
@@ -168,16 +153,12 @@ class ConvexClient: ObservableObject {
 
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data) {
-                throw ConvexError.serverError(errorBody.message)
+                throw ConvexError.serverError(errorBody.message ?? "Unknown server error")
             }
             throw ConvexError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-
-        let wrapper = try decoder.decode(ConvexResponse<T>.self, from: data)
-        return wrapper.value
+        return try decodeResponse(data)
     }
 
     // MARK: - WebSocket for Real-time Updates
@@ -187,7 +168,7 @@ class ConvexClient: ObservableObject {
         var wsURLString = ConvexConfig.deploymentURL
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
-        wsURLString += "/sync"
+        wsURLString += "/api/\(ConvexConfig.apiVersion)/sync"
 
         guard let wsURL = URL(string: wsURLString) else {
             connectionError = "Invalid WebSocket URL"
@@ -195,9 +176,7 @@ class ConvexClient: ObservableObject {
         }
 
         var request = URLRequest(url: wsURL)
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        applyAuthHeaderIfNeeded(&request)
 
         webSocketTask = session.webSocketTask(with: request)
         webSocketTask?.resume()
@@ -220,6 +199,15 @@ class ConvexClient: ObservableObject {
         for (queryName, _) in subscriptions {
             subscribeToQuery(queryName)
         }
+    }
+
+    private func applyAuthHeaderIfNeeded(_ request: inout URLRequest) {
+        guard let token = authToken, isJWT(token) else { return }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func isJWT(_ token: String) -> Bool {
+        token.split(separator: ".").count == 3
     }
 
     private func receiveMessage() {
@@ -317,13 +305,14 @@ class ConvexClient: ObservableObject {
 
 // MARK: - Response Types
 struct ConvexResponse<T: Decodable>: Decodable {
-    let value: T
+    let value: T?
     let status: String?
+    let error: ConvexErrorResponse?
 }
 
 struct ConvexErrorResponse: Decodable {
-    let code: String
-    let message: String
+    let code: String?
+    let message: String?
 }
 
 struct EmptyConvexResponse: Decodable {}
@@ -351,6 +340,36 @@ enum ConvexError: LocalizedError {
             return "Failed to encode request"
         case .decodingError(let error):
             return "Failed to decode response: \(error.localizedDescription)"
+        }
+    }
+}
+
+// MARK: - Response Decoding
+private extension ConvexClient {
+    func decodeResponse<T: Decodable>(_ data: Data) throws -> T {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .millisecondsSince1970
+
+        do {
+            let wrapper = try decoder.decode(ConvexResponse<T>.self, from: data)
+
+            if let status = wrapper.status, status.lowercased() == "error" {
+                throw ConvexError.serverError(wrapper.error?.message ?? "Unknown server error")
+            }
+
+            if let value = wrapper.value {
+                return value
+            }
+
+            if T.self == EmptyConvexResponse.self {
+                return EmptyConvexResponse() as! T
+            }
+
+            throw ConvexError.invalidResponse
+        } catch let error as ConvexError {
+            throw error
+        } catch {
+            throw ConvexError.decodingError(error)
         }
     }
 }

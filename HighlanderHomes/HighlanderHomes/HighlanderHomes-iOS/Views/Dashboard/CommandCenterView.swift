@@ -147,6 +147,7 @@ struct PortfolioHealthCard: View {
     @State private var ringProgress: Double = 0
 
     var body: some View {
+        let hasData = propertiesCount > 0 || pendingMaintenance > 0 || occupancyRate > 0
         VStack(spacing: Theme.Spacing.md) {
             HStack {
                 Text("Portfolio Health")
@@ -177,7 +178,7 @@ struct PortfolioHealthCard: View {
                         .rotationEffect(.degrees(-90))
 
                     VStack(spacing: 0) {
-                        Text("\(animatedScore)")
+                        Text(hasData ? "\(animatedScore)" : "—")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
                             .foregroundColor(Theme.Colors.textPrimary)
                             .contentTransition(.numericText())
@@ -201,13 +202,14 @@ struct PortfolioHealthCard: View {
         .cardStyle()
         .onAppear {
             withAnimation(.spring(response: 1.0, dampingFraction: 0.8)) {
-                animatedScore = score
-                ringProgress = Double(score) / 100.0
+                animatedScore = hasData ? score : 0
+                ringProgress = hasData ? Double(score) / 100.0 : 0
             }
         }
     }
 
     private var healthColor: Color {
+        if !hasData { return Theme.Colors.slate500 }
         switch score {
         case 80...100: return Theme.Colors.emerald
         case 60..<80: return Theme.Colors.infoBlue
@@ -217,6 +219,13 @@ struct PortfolioHealthCard: View {
     }
 
     private var healthGradient: LinearGradient {
+        if !hasData {
+            return LinearGradient(
+                colors: [Theme.Colors.slate600, Theme.Colors.slate700],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
         switch score {
         case 80...100: return Theme.Gradients.emeraldGlow
         case 60..<80: return LinearGradient(colors: [Theme.Colors.infoBlue, Theme.Colors.infoBlue.opacity(0.7)], startPoint: .leading, endPoint: .trailing)
@@ -226,12 +235,17 @@ struct PortfolioHealthCard: View {
     }
 
     private var healthIcon: String {
+        if !hasData { return "chart.line.downtrend.xyaxis" }
         switch score {
         case 80...100: return "checkmark.shield.fill"
         case 60..<80: return "shield.lefthalf.filled"
         case 40..<60: return "exclamationmark.shield.fill"
         default: return "xmark.shield.fill"
         }
+    }
+
+    private var hasData: Bool {
+        propertiesCount > 0 || pendingMaintenance > 0 || occupancyRate > 0
     }
 }
 

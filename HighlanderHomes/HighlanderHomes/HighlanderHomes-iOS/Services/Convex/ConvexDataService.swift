@@ -14,6 +14,8 @@ class ConvexDataService: ObservableObject {
     @Published var maintenanceRequests: [ConvexMaintenanceRequest] = []
     @Published var contractors: [ConvexContractor] = []
     @Published var feedEvents: [ConvexFeedEvent] = []
+    @Published var rentPayments: [ConvexRentPayment] = []
+    @Published var expenses: [ConvexExpense] = []
 
     @Published var isLoading: Bool = false
     @Published var error: String?
@@ -42,6 +44,9 @@ class ConvexDataService: ObservableObject {
     }
 
     var portfolioHealthScore: Int {
+        if properties.isEmpty && maintenanceRequests.isEmpty {
+            return 0
+        }
         var score = 100
 
         // Deduct for pending maintenance
@@ -129,11 +134,15 @@ class ConvexDataService: ObservableObject {
             async let tens = fetchTenants()
             async let reqs = fetchMaintenanceRequests()
             async let cons = fetchContractors()
+            async let rents = fetchRentPayments()
+            async let exps = fetchExpenses()
 
             properties = try await props
             tenants = try await tens
             maintenanceRequests = try await reqs
             contractors = try await cons
+            rentPayments = try await rents
+            expenses = try await exps
 
             // Generate feed events
             generateFeedEvents()
@@ -175,12 +184,28 @@ class ConvexDataService: ObservableObject {
         ) { [weak self] (tens: [ConvexTenant]) in
             self?.tenants = tens
         }
+
+        client.subscribe(
+            to: ConvexConfig.Functions.getRentPayments,
+            args: ["userId": userId]
+        ) { [weak self] (payments: [ConvexRentPayment]) in
+            self?.rentPayments = payments
+        }
+
+        client.subscribe(
+            to: ConvexConfig.Functions.getExpenses,
+            args: ["userId": userId]
+        ) { [weak self] (expenses: [ConvexExpense]) in
+            self?.expenses = expenses
+        }
     }
 
     func unsubscribeFromUpdates() {
         client.unsubscribe(from: ConvexConfig.Functions.getProperties)
         client.unsubscribe(from: ConvexConfig.Functions.getMaintenanceRequests)
         client.unsubscribe(from: ConvexConfig.Functions.getTenants)
+        client.unsubscribe(from: ConvexConfig.Functions.getRentPayments)
+        client.unsubscribe(from: ConvexConfig.Functions.getExpenses)
     }
 
     // MARK: - User ID Helper
@@ -307,6 +332,46 @@ class ConvexDataService: ObservableObject {
             ConvexConfig.Functions.getContractors,
             args: ["userId": userId]
         )
+    }
+
+    // MARK: - Rent Payments
+    func fetchRentPayments() async throws -> [ConvexRentPayment] {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        return try await client.query(
+            ConvexConfig.Functions.getRentPayments,
+            args: ["userId": userId]
+        )
+    }
+
+    func createRentPayment(_ payment: ConvexRentPaymentInput) async throws -> ConvexRentPayment {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        var args = payment.toDictionary()
+        args["userId"] = userId
+        return try await client.mutation(ConvexConfig.Functions.createRentPayment, args: args)
+    }
+
+    // MARK: - Expenses
+    func fetchExpenses() async throws -> [ConvexExpense] {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        return try await client.query(
+            ConvexConfig.Functions.getExpenses,
+            args: ["userId": userId]
+        )
+    }
+
+    func createExpense(_ expense: ConvexExpenseInput) async throws -> ConvexExpense {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        var args = expense.toDictionary()
+        args["userId"] = userId
+        return try await client.mutation(ConvexConfig.Functions.createExpense, args: args)
     }
 
     func createContractor(_ contractor: ConvexContractorInput) async throws -> ConvexContractor {
@@ -575,6 +640,110 @@ struct ConvexMaintenanceRequestInput {
         ]
         if let tenId = tenantId { dict["tenantId"] = tenId }
         if let photos = photoURLs { dict["photoURLs"] = photos }
+        return dict
+    }
+}
+
+struct ConvexRentPayment: Codable, Identifiable {
+    let id: String
+    var propertyId: String
+    var tenantId: String?
+    var amount: Double
+    var paymentDate: Double
+    var paymentMethod: String?
+    var status: String
+    var transactionId: String?
+    var notes: String?
+    var createdAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case propertyId, tenantId, amount, paymentDate, paymentMethod, status, transactionId, notes, createdAt
+    }
+
+    var paymentDateValue: Date {
+        Date(timeIntervalSince1970: paymentDate / 1000)
+    }
+}
+
+struct ConvexRentPaymentInput {
+    var propertyId: String
+    var tenantId: String?
+    var amount: Double
+    var paymentDate: Date
+    var paymentMethod: String?
+    var status: String
+    var transactionId: String?
+    var notes: String?
+
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "propertyId": propertyId,
+            "amount": amount,
+            "paymentDate": paymentDate.timeIntervalSince1970 * 1000,
+            "status": status
+        ]
+        if let tenantId { dict["tenantId"] = tenantId }
+        if let paymentMethod { dict["paymentMethod"] = paymentMethod }
+        if let transactionId { dict["transactionId"] = transactionId }
+        if let notes { dict["notes"] = notes }
+        return dict
+    }
+}
+
+struct ConvexExpense: Codable, Identifiable {
+    let id: String
+    var propertyId: String?
+    var title: String
+    var description: String?
+    var amount: Double
+    var category: String
+    var date: Double
+    var isRecurring: Bool
+    var recurringFrequency: String?
+    var receiptURL: String?
+    var vendor: String?
+    var notes: String?
+    var createdAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case propertyId, title, description, amount, category, date, isRecurring, recurringFrequency
+        case receiptURL, vendor, notes, createdAt
+    }
+
+    var dateValue: Date {
+        Date(timeIntervalSince1970: date / 1000)
+    }
+}
+
+struct ConvexExpenseInput {
+    var propertyId: String?
+    var title: String
+    var description: String?
+    var amount: Double
+    var category: String
+    var date: Date
+    var isRecurring: Bool
+    var recurringFrequency: String?
+    var receiptURL: String?
+    var vendor: String?
+    var notes: String?
+
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "title": title,
+            "amount": amount,
+            "category": category,
+            "date": date.timeIntervalSince1970 * 1000,
+            "isRecurring": isRecurring
+        ]
+        if let propertyId { dict["propertyId"] = propertyId }
+        if let description { dict["description"] = description }
+        if let recurringFrequency { dict["recurringFrequency"] = recurringFrequency }
+        if let receiptURL { dict["receiptURL"] = receiptURL }
+        if let vendor { dict["vendor"] = vendor }
+        if let notes { dict["notes"] = notes }
         return dict
     }
 }

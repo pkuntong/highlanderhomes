@@ -1,5 +1,8 @@
+/// <reference types="node" />
+"use node";
+
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery } from "./_generated/server";
+import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createHash, randomBytes } from "crypto";
 
@@ -78,9 +81,6 @@ export const signUp = action({
   },
   handler: async (ctx, args) => {
     const email = normalizeEmail(args.email);
-    if (!email) {
-      throw new Error("Apple Sign-In did not provide an email. Please use email sign-in.");
-    }
     if (!validateEmail(email)) {
       throw new Error("Please enter a valid email address.");
     }
@@ -89,7 +89,7 @@ export const signUp = action({
     // This is a simplified version for demonstration
     
     // Check if user already exists
-    const existingUser = await ctx.runQuery(internal.auth.findUserByEmail, {
+    const existingUser = await ctx.runQuery(internal.authInternal.findUserByEmail, {
       email,
     });
 
@@ -104,7 +104,7 @@ export const signUp = action({
     const salt = randomBytes(16).toString("hex");
     const passwordHash = hashPassword(args.password, salt);
 
-    const userId = await ctx.runMutation(internal.auth.createUser, {
+    const userId = await ctx.runMutation(internal.authInternal.createUser, {
       email,
       name: args.name,
       passwordHash,
@@ -114,7 +114,7 @@ export const signUp = action({
 
     const verificationCode = generateVerificationCode();
     const expiresAt = Date.now() + VERIFICATION_CODE_TTL_MS;
-    await ctx.runMutation(internal.auth.setEmailVerification, {
+    await ctx.runMutation(internal.authInternal.setEmailVerification, {
       userId,
       code: verificationCode,
       expiresAt,
@@ -132,7 +132,7 @@ export const signUp = action({
     const token = `token_${userId}_${Date.now()}`;
 
     // Get user data
-    const user = await ctx.runQuery(internal.auth.getUser, { userId });
+    const user = await ctx.runQuery(internal.authInternal.getUser, { userId });
 
     return {
       token,
@@ -157,7 +157,7 @@ export const signIn = action({
     }
 
     // Find user by email
-    const user = await ctx.runQuery(internal.auth.findUserByEmail, {
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, {
       email,
     });
 
@@ -179,7 +179,7 @@ export const signIn = action({
     }
 
     // Update last login
-    await ctx.runMutation(internal.auth.updateLastLogin, {
+    await ctx.runMutation(internal.authInternal.updateLastLogin, {
       userId: user._id,
     });
 
@@ -218,20 +218,20 @@ export const signInWithApple = action({
     // For now, we'll create or find user by email
 
     let user = email
-      ? await ctx.runQuery(internal.auth.findUserByEmail, { email })
+      ? await ctx.runQuery(internal.authInternal.findUserByEmail, { email })
       : null;
 
     if (!user) {
       // Create new user
-      const userId = await ctx.runMutation(internal.auth.createUser, {
+      const userId = await ctx.runMutation(internal.authInternal.createUser, {
         email,
         name: args.name || "Apple User",
         emailVerified: true,
       });
-      user = await ctx.runQuery(internal.auth.getUser, { userId });
+      user = await ctx.runQuery(internal.authInternal.getUser, { userId });
     } else {
       // Update last login
-      await ctx.runMutation(internal.auth.updateLastLogin, {
+      await ctx.runMutation(internal.authInternal.updateLastLogin, {
         userId: user._id,
       });
     }
@@ -267,7 +267,7 @@ export const sendVerificationEmail = action({
       throw new Error("Please enter a valid email address.");
     }
 
-    const user = await ctx.runQuery(internal.auth.findUserByEmail, { email });
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, { email });
     if (!user) {
       throw new Error("User not found");
     }
@@ -275,7 +275,7 @@ export const sendVerificationEmail = action({
     const code = generateVerificationCode();
     const expiresAt = Date.now() + VERIFICATION_CODE_TTL_MS;
 
-    await ctx.runMutation(internal.auth.setEmailVerification, {
+    await ctx.runMutation(internal.authInternal.setEmailVerification, {
       userId: user._id,
       code,
       expiresAt,
@@ -300,13 +300,15 @@ export const verifyEmail = action({
       throw new Error("Please enter a valid email address.");
     }
 
-    const user = await ctx.runQuery(internal.auth.findUserByEmail, { email });
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, { email });
     if (!user) {
       throw new Error("User not found");
     }
 
     if (user.emailVerified) {
-      return await ctx.runQuery(internal.auth.getUser, { userId: user._id });
+      const verifiedUser = await ctx.runQuery(internal.authInternal.getUser, { userId: user._id });
+      const token = `token_${user._id}_${Date.now()}`;
+      return { token, user: verifiedUser };
     }
 
     if (!user.emailVerificationCode || !user.emailVerificationExpiresAt) {
@@ -321,11 +323,13 @@ export const verifyEmail = action({
       throw new Error("Verification code expired. Please request a new one.");
     }
 
-    await ctx.runMutation(internal.auth.markEmailVerified, {
+    await ctx.runMutation(internal.authInternal.markEmailVerified, {
       userId: user._id,
     });
 
-    return await ctx.runQuery(internal.auth.getUser, { userId: user._id });
+    const verifiedUser = await ctx.runQuery(internal.authInternal.getUser, { userId: user._id });
+    const token = `token_${user._id}_${Date.now()}`;
+    return { token, user: verifiedUser };
   },
 });
 
@@ -337,7 +341,7 @@ export const resetPassword = action({
     email: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(internal.auth.findUserByEmail, {
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, {
       email: args.email,
     });
 
@@ -350,99 +354,5 @@ export const resetPassword = action({
     // For now, just return success
 
     return { success: true };
-  },
-});
-
-// Internal functions
-export const findUserByEmail = internalQuery({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    const email = normalizeEmail(args.email);
-    return await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .first();
-  },
-});
-
-export const createUser = internalMutation({
-  args: {
-    email: v.string(),
-    name: v.string(),
-    passwordHash: v.optional(v.string()),
-    passwordSalt: v.optional(v.string()),
-    emailVerified: v.optional(v.boolean()),
-    emailVerificationCode: v.optional(v.string()),
-    emailVerificationExpiresAt: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const userId = await ctx.db.insert("users", {
-      name: args.name,
-      email: args.email,
-      isPremium: false,
-      passwordHash: args.passwordHash,
-      passwordSalt: args.passwordSalt,
-      emailVerified: args.emailVerified ?? false,
-      emailVerificationCode: args.emailVerificationCode,
-      emailVerificationExpiresAt: args.emailVerificationExpiresAt,
-      createdAt: Date.now(),
-    });
-    return userId;
-  },
-});
-
-export const getUser = internalQuery({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      throw new Error("User not found");
-    }
-    return {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      avatarURL: user.avatarURL,
-      isPremium: user.isPremium,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt,
-      lastLoginAt: user.lastLoginAt,
-    };
-  },
-});
-
-export const setEmailVerification = internalMutation({
-  args: {
-    userId: v.id("users"),
-    code: v.string(),
-    expiresAt: v.number(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      emailVerificationCode: args.code,
-      emailVerificationExpiresAt: args.expiresAt,
-    });
-  },
-});
-
-export const markEmailVerified = internalMutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      emailVerified: true,
-      emailVerificationCode: undefined,
-      emailVerificationExpiresAt: undefined,
-    });
-  },
-});
-
-export const updateLastLogin = internalMutation({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      lastLoginAt: Date.now(),
-    });
   },
 });

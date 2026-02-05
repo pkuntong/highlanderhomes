@@ -10,6 +10,9 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             // Main Content
             TabView(selection: $appState.selectedTab) {
+                TransactionsView()
+                    .tag(AppState.Tab.transactions)
+
                 MaintenanceFeedView()
                     .tag(AppState.Tab.feed)
 
@@ -39,6 +42,11 @@ struct ContentView: View {
                     .padding(.trailing, 20)
                     .padding(.bottom, 100)
             }
+        }
+        .sheet(isPresented: $appState.showingQuickEntry) {
+            QuickEntryView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 }
@@ -135,11 +143,6 @@ struct QuickEntryFAB: View {
         }
         .scaleEffect(isPressed ? 0.9 : 1.0)
         .animation(.spring(response: 0.2), value: isPressed)
-        .sheet(isPresented: $appState.showingQuickEntry) {
-            QuickEntryView()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
     }
 }
 
