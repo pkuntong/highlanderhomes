@@ -203,6 +203,23 @@ class ConvexAuth: ObservableObject {
         }
     }
 
+    // MARK: - Subscription
+    func setPremiumStatus(isPremium: Bool) async throws {
+        guard let userId = currentUser?.id else {
+            throw ConvexError.notAuthenticated
+        }
+
+        let user: ConvexUser = try await client.mutation(
+            ConvexConfig.Functions.setPremiumStatus,
+            args: ["userId": userId, "isPremium": isPremium]
+        )
+
+        currentUser = user
+        if let userData = try? JSONEncoder().encode(user) {
+            UserDefaults.standard.set(userData, forKey: userKey)
+        }
+    }
+
     func deleteAccount() async throws {
         guard let userId = currentUser?.id else {
             throw ConvexError.notAuthenticated

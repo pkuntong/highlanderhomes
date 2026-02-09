@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { FREE_PROPERTY_LIMIT, isOwnerEmail } from "./limits";
 
 /**
  * List all properties for the current user
@@ -93,6 +94,24 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const ownerAccount = isOwnerEmail(user.email);
+    if (!user.isPremium && !ownerAccount) {
+      const existing = await ctx.db
+        .query("properties")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect();
+      if (existing.length >= FREE_PROPERTY_LIMIT) {
+        throw new Error(
+          `Free plan limit reached (max ${FREE_PROPERTY_LIMIT} properties). Upgrade to add more.`
+        );
+      }
+    }
+
     const propertyId = await ctx.db.insert("properties", {
       name: args.name,
       address: args.address,

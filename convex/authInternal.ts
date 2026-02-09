@@ -1,8 +1,9 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { isOwnerEmail, normalizeEmail as normalizeEmailHelper } from "./limits";
 
 function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
+  return normalizeEmailHelper(email);
 }
 
 export const findUserByEmail = internalQuery({
@@ -27,10 +28,12 @@ export const createUser = internalMutation({
     emailVerificationExpiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const normalizedEmail = normalizeEmail(args.email);
+    const ownerAccount = isOwnerEmail(normalizedEmail);
     const userId = await ctx.db.insert("users", {
       name: args.name,
-      email: normalizeEmail(args.email),
-      isPremium: false,
+      email: normalizedEmail,
+      isPremium: ownerAccount,
       passwordHash: args.passwordHash,
       passwordSalt: args.passwordSalt,
       emailVerified: args.emailVerified ?? false,

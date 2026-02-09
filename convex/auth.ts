@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { createHash, randomBytes } from "crypto";
+import nodemailer from "nodemailer";
 
 function hashPassword(password: string, salt: string) {
   return createHash("sha256").update(password + salt).digest("hex");
@@ -70,6 +71,66 @@ async function sendVerificationEmailViaResend(email: string, code: string) {
   }
 }
 
+async function sendVerificationEmailViaSMTP(email: string, code: string) {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || "587");
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || user;
+  const secureEnv = process.env.SMTP_SECURE;
+  const secure = secureEnv ? secureEnv === "true" : port === 465;
+
+  if (!host || !user || !pass || !from) {
+    throw new Error("Missing SMTP configuration");
+  }
+
+  const subject = process.env.SMTP_VERIFICATION_SUBJECT || "Verify your email";
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.5;">
+      <h2>Verify your email</h2>
+      <p>Your verification code is:</p>
+      <div style="font-size: 24px; font-weight: 700; letter-spacing: 2px;">${code}</div>
+      <p>This code expires in 15 minutes.</p>
+    </div>
+  `;
+  const text = `Your verification code is: ${code}\nThis code expires in 15 minutes.`;
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+  });
+
+  await transporter.sendMail({
+    from,
+    to: email,
+    subject,
+    text,
+    html,
+  });
+}
+
+async function deliverVerificationEmail(email: string, code: string) {
+  const smtpConfigured = !!(
+    process.env.SMTP_HOST &&
+    process.env.SMTP_USER &&
+    process.env.SMTP_PASS
+  );
+
+  if (smtpConfigured) {
+    await sendVerificationEmailViaSMTP(email, code);
+    return;
+  }
+
+  if (process.env.RESEND_API_KEY) {
+    await sendVerificationEmailViaResend(email, code);
+    return;
+  }
+
+  throw new Error("Email delivery not configured");
+}
+
 /**
  * Sign up with email and password
  */
@@ -122,7 +183,7 @@ export const signUp = action({
 
     let verificationSent = false;
     try {
-      await sendVerificationEmailViaResend(email, verificationCode);
+      await deliverVerificationEmail(email, verificationCode);
       verificationSent = true;
     } catch (error) {
       console.warn("Verification email failed:", error);
@@ -281,7 +342,7 @@ export const sendVerificationEmail = action({
       expiresAt,
     });
 
-    await sendVerificationEmailViaResend(email, code);
+    await deliverVerificationEmail(email, code);
     return { success: true };
   },
 });

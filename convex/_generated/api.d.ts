@@ -14,6 +14,7 @@ import type * as contractors from "../contractors.js";
 import type * as expenses from "../expenses.js";
 import type * as feedEvents from "../feedEvents.js";
 import type * as insurancePolicies from "../insurancePolicies.js";
+import type * as limits from "../limits.js";
 import type * as maintenanceRequests from "../maintenanceRequests.js";
 import type * as migrations from "../migrations.js";
 import type * as properties from "../properties.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   feedEvents: typeof feedEvents;
   insurancePolicies: typeof insurancePolicies;
+  limits: typeof limits;
   maintenanceRequests: typeof maintenanceRequests;
   migrations: typeof migrations;
   properties: typeof properties;

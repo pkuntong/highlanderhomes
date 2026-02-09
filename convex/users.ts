@@ -72,6 +72,39 @@ export const update = mutation({
 });
 
 /**
+ * Update premium status (subscription)
+ */
+export const setPremiumStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    isPremium: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(args.userId, {
+      isPremium: args.isPremium,
+    });
+
+    const updated = await ctx.db.get(args.userId);
+    return {
+      _id: updated!._id,
+      id: updated!._id,
+      name: updated!.name,
+      email: updated!.email,
+      avatarURL: updated!.avatarURL,
+      isPremium: updated!.isPremium,
+      emailVerified: updated!.emailVerified,
+      createdAt: updated!.createdAt,
+      lastLoginAt: updated!.lastLoginAt,
+    };
+  },
+});
+
+/**
  * Delete user account and all related data
  */
 export const deleteAccount = mutation({

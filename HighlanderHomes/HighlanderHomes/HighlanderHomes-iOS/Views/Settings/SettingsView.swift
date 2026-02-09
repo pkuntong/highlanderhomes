@@ -21,6 +21,7 @@ struct SettingsView: View {
     @State private var confirmPassword = ""
     @State private var isChangingPassword = false
     @State private var passwordMessage: String?
+    @State private var showingPricing = false
 
     #if DEBUG
     @AppStorage(ConvexConfig.dataOwnerUserIdDefaultsKey) private var dataOwnerUserId: String = ""
@@ -35,6 +36,9 @@ struct SettingsView: View {
                     VStack(spacing: Theme.Spacing.xl) {
                         // Profile Section
                         profileSection
+
+                        // Plan Section
+                        planSection
 
                         // Account Section
                         accountSection
@@ -79,6 +83,9 @@ struct SettingsView: View {
             if let email = convexAuth.currentUser?.email {
                 VerifyEmailSheet(email: email)
             }
+        }
+        .sheet(isPresented: $showingPricing) {
+            PricingView()
         }
         .alert("Delete Account", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
@@ -169,6 +176,48 @@ struct SettingsView: View {
             }
         }
         .padding(.top, Theme.Spacing.xl)
+    }
+
+    // MARK: - Plan Section
+    private var planSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            SectionHeader(title: "Plan")
+
+            let isPremium = convexAuth.currentUser?.isPremium == true
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(isPremium ? "Pro Plan" : "Free Plan")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Theme.Colors.textPrimary)
+                Text(isPremium ? "Unlimited properties" : "Up to 3 properties")
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.Colors.textSecondary)
+            }
+            .padding(Theme.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                    .fill(Theme.Colors.slate800)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                            .stroke(Theme.Colors.slate700, lineWidth: 1)
+                    }
+            }
+
+            Button(isPremium ? "Manage Subscription" : "Upgrade to Pro") {
+                showingPricing = true
+            }
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundColor(isPremium ? Theme.Colors.textSecondary : Theme.Colors.emerald)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                    .stroke(Theme.Colors.slate600, lineWidth: isPremium ? 1 : 0)
+                    .fill(isPremium ? Color.clear : Theme.Colors.emerald.opacity(0.15))
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.lg)
     }
 
     // MARK: - Account Section

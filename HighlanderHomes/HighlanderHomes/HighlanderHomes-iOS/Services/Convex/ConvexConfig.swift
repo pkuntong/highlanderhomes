@@ -75,6 +75,7 @@ enum ConvexConfig {
         static let createUser = "users:create"
         static let updateUser = "users:update"
         static let deleteUser = "users:deleteAccount"
+        static let setPremiumStatus = "users:setPremiumStatus"
         static let changePassword = "auth:changePassword"
     }
 

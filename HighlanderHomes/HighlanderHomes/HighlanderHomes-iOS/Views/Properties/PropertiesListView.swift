@@ -3,11 +3,24 @@ import SwiftUI
 struct PropertiesListView: View {
     @EnvironmentObject var dataService: ConvexDataService
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var convexAuth: ConvexAuth
 
     @State private var searchText = ""
     @State private var showingAddProperty = false
     @State private var showingSettings = false
     @State private var showingContractors = false
+    @State private var showingPricing = false
+    @State private var showingLimitAlert = false
+
+    private let freeLimit = 3
+
+    private var isPremiumUser: Bool {
+        convexAuth.currentUser?.isPremium == true
+    }
+
+    private var canAddProperty: Bool {
+        isPremiumUser || dataService.properties.count < freeLimit
+    }
 
     private var filteredProperties: [ConvexProperty] {
         if searchText.isEmpty {
@@ -78,7 +91,11 @@ struct PropertiesListView: View {
                         // Add property
                         Button {
                             HapticManager.shared.impact(.medium)
-                            showingAddProperty = true
+                            if canAddProperty {
+                                showingAddProperty = true
+                            } else {
+                                showingLimitAlert = true
+                            }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 24))
@@ -100,6 +117,15 @@ struct PropertiesListView: View {
         }
         .sheet(isPresented: $showingContractors) {
             ContractorsDirectorySheet()
+        }
+        .sheet(isPresented: $showingPricing) {
+            PricingView()
+        }
+        .alert("Property Limit Reached", isPresented: $showingLimitAlert) {
+            Button("Upgrade to Pro") { showingPricing = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Free plan allows up to \(freeLimit) properties. Upgrade to add more.")
         }
         .onChange(of: showingAddProperty) { newValue in
             appState.isModalPresented = newValue || showingContractors
