@@ -1,53 +1,34 @@
 import SwiftUI
-import Combine
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    @State private var tabBarOffset: CGFloat = 0
     @Namespace private var tabAnimation
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Main Content
+            // Main Content — standard TabView (no .page style)
             TabView(selection: $appState.selectedTab) {
-                TransactionsView()
-                    .tag(AppState.Tab.transactions)
-
-                MaintenanceFeedView()
-                    .tag(AppState.Tab.feed)
-
-                TriageHubView()
-                    .tag(AppState.Tab.triage)
-
-                CommandCenterView()
+                DashboardView()
                     .tag(AppState.Tab.dashboard)
 
-                PropertyVaultView()
-                    .tag(AppState.Tab.vault)
+                PropertiesListView()
+                    .tag(AppState.Tab.properties)
+
+                MaintenanceListView()
+                    .tag(AppState.Tab.maintenance)
+
+                FinancesView()
+                    .tag(AppState.Tab.finances)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
 
             // Custom Tab Bar
-            if !appState.showingQuickEntry && !appState.isModalPresented {
+            if !appState.isModalPresented {
                 CustomTabBar(selectedTab: $appState.selectedTab, namespace: tabAnimation)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
             }
         }
         .ignoresSafeArea(.keyboard)
-        .overlay(alignment: .bottomTrailing) {
-            // Quick Entry FAB
-            if !appState.showingQuickEntry && !appState.isModalPresented {
-                QuickEntryFAB()
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 100)
-            }
-        }
-        .sheet(isPresented: $appState.showingQuickEntry) {
-            QuickEntryView()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
     }
 }
 
@@ -112,41 +93,14 @@ struct TabBarButton: View {
             }
         }
         .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Quick Entry FAB
-struct QuickEntryFAB: View {
-    @EnvironmentObject var appState: AppState
-    @State private var isPressed = false
-    @State private var rotation: Double = 0
-
-    var body: some View {
-        Button {
-            HapticManager.shared.impact(.heavy)
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                appState.showingQuickEntry.toggle()
-                rotation += 45
-            }
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(Theme.Gradients.emeraldGlow)
-                    .frame(width: 56, height: 56)
-                    .shadow(color: Theme.Colors.emerald.opacity(0.5), radius: 12, y: 4)
-
-                Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
-                    .rotationEffect(.degrees(rotation))
-            }
-        }
-        .scaleEffect(isPressed ? 0.9 : 1.0)
-        .animation(.spring(response: 0.2), value: isPressed)
+        .accessibilityLabel("\(tab.title) tab")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
 #Preview {
     ContentView()
         .environmentObject(AppState())
+        .environmentObject(ConvexDataService.shared)
+        .environmentObject(ConvexAuth.shared)
 }

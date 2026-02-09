@@ -6,7 +6,7 @@ enum ConvexConfig {
     // MARK: - Deployment URL
     // Get this from: npx convex dev (look for "Convex deployment URL")
     // Format: https://YOUR_DEPLOYMENT_NAME.convex.cloud
-    static let deploymentURL = "https://successful-goldfinch-551.convex.cloud"
+    static let deploymentURL = "https://acrobatic-nightingale-459.convex.cloud"
     // Keep in sync with the Convex JS client version used in this repo.
     static let apiVersion = "1.31.6"
 
@@ -29,6 +29,8 @@ enum ConvexConfig {
         static let users = "users"
         static let feedEvents = "feedEvents"
         static let rentPayments = "rentPayments"
+        static let insurancePolicies = "insurancePolicies"
+        static let rentalLicenses = "rentalLicenses"
     }
 
     // MARK: - Function Names (define in convex/ folder)
@@ -43,6 +45,8 @@ enum ConvexConfig {
         static let getFeedEvents = "feedEvents:list"
         static let getRentPayments = "rentPayments:list"
         static let getExpenses = "expenses:list"
+        static let getInsurancePolicies = "insurancePolicies:list"
+        static let getRentalLicenses = "rentalLicenses:list"
         static let getCurrentUser = "users:current"
 
         // Mutations (write data)
@@ -55,11 +59,23 @@ enum ConvexConfig {
         static let updateMaintenanceStatus = "maintenanceRequests:updateStatus"
         static let assignContractor = "maintenanceRequests:assignContractor"
         static let createContractor = "contractors:create"
+        static let updateContractor = "contractors:update"
         static let createRentPayment = "rentPayments:create"
+        static let updateRentPayment = "rentPayments:update"
+        static let deleteRentPayment = "rentPayments:remove"
         static let createExpense = "expenses:create"
+        static let updateExpense = "expenses:update"
+        static let deleteExpense = "expenses:remove"
+        static let createInsurancePolicy = "insurancePolicies:create"
+        static let updateInsurancePolicy = "insurancePolicies:update"
+        static let deleteInsurancePolicy = "insurancePolicies:remove"
+        static let createRentalLicense = "rentalLicenses:create"
+        static let updateRentalLicense = "rentalLicenses:update"
+        static let deleteRentalLicense = "rentalLicenses:remove"
         static let createUser = "users:create"
         static let updateUser = "users:update"
         static let deleteUser = "users:deleteAccount"
+        static let changePassword = "auth:changePassword"
     }
 
     // MARK: - Auth Providers

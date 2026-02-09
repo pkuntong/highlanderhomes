@@ -96,3 +96,86 @@ export const create = mutation({
     };
   },
 });
+
+/**
+ * Update rent payment
+ */
+export const update = mutation({
+  args: {
+    id: v.id("rentPayments"),
+    propertyId: v.optional(v.id("properties")),
+    tenantId: v.optional(v.id("tenants")),
+    clearTenantId: v.optional(v.boolean()),
+    amount: v.optional(v.number()),
+    paymentDate: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
+    paymentMethod: v.optional(v.string()),
+    status: v.optional(v.string()),
+    transactionId: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, clearTenantId, ...updates } = args;
+    const payment = await ctx.db.get(id);
+    if (!payment) {
+      throw new Error("Rent payment not found");
+    }
+
+    const patch: Record<string, any> = {};
+
+    if (updates.propertyId !== undefined) patch.propertyId = updates.propertyId;
+    if (clearTenantId) {
+      patch.tenantId = undefined;
+    } else if (updates.tenantId !== undefined) {
+      patch.tenantId = updates.tenantId;
+    }
+    if (updates.amount !== undefined) patch.amount = updates.amount;
+    if (updates.paymentDate !== undefined) patch.paymentDate = updates.paymentDate;
+    if (updates.dueDate !== undefined) patch.dueDate = updates.dueDate;
+    if (updates.paymentMethod !== undefined) {
+      patch.paymentMethod = updates.paymentMethod === "" ? undefined : updates.paymentMethod;
+    }
+    if (updates.status !== undefined) patch.status = updates.status;
+    if (updates.transactionId !== undefined) {
+      patch.transactionId = updates.transactionId === "" ? undefined : updates.transactionId;
+    }
+    if (updates.notes !== undefined) {
+      patch.notes = updates.notes === "" ? undefined : updates.notes;
+    }
+
+    await ctx.db.patch(id, patch);
+
+    const updated = await ctx.db.get(id);
+    return {
+      _id: updated!._id,
+      id: updated!._id,
+      propertyId: updated!.propertyId,
+      tenantId: updated!.tenantId,
+      amount: updated!.amount,
+      paymentDate: updated!.paymentDate,
+      dueDate: updated!.dueDate,
+      paymentMethod: updated!.paymentMethod,
+      status: updated!.status,
+      transactionId: updated!.transactionId,
+      notes: updated!.notes,
+      createdAt: updated!.createdAt,
+    };
+  },
+});
+
+/**
+ * Delete rent payment
+ */
+export const remove = mutation({
+  args: {
+    id: v.id("rentPayments"),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.id);
+    if (!payment) {
+      throw new Error("Rent payment not found");
+    }
+    await ctx.db.delete(args.id);
+    return { id: args.id };
+  },
+});

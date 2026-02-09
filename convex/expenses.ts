@@ -96,3 +96,97 @@ export const create = mutation({
     };
   },
 });
+
+/**
+ * Update expense
+ */
+export const update = mutation({
+  args: {
+    id: v.id("expenses"),
+    propertyId: v.optional(v.id("properties")),
+    clearPropertyId: v.optional(v.boolean()),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    amount: v.optional(v.number()),
+    category: v.optional(v.string()),
+    date: v.optional(v.number()),
+    isRecurring: v.optional(v.boolean()),
+    recurringFrequency: v.optional(v.string()),
+    receiptURL: v.optional(v.string()),
+    vendor: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, clearPropertyId, ...updates } = args;
+    const expense = await ctx.db.get(id);
+    if (!expense) {
+      throw new Error("Expense not found");
+    }
+
+    const patch: Record<string, any> = {};
+
+    if (clearPropertyId) {
+      patch.propertyId = undefined;
+    } else if (updates.propertyId !== undefined) {
+      patch.propertyId = updates.propertyId;
+    }
+
+    if (updates.title !== undefined) patch.title = updates.title;
+    if (updates.description !== undefined) {
+      patch.description = updates.description === "" ? undefined : updates.description;
+    }
+    if (updates.amount !== undefined) patch.amount = updates.amount;
+    if (updates.category !== undefined) patch.category = updates.category;
+    if (updates.date !== undefined) patch.date = updates.date;
+    if (updates.isRecurring !== undefined) patch.isRecurring = updates.isRecurring;
+    if (updates.recurringFrequency !== undefined) {
+      patch.recurringFrequency = updates.recurringFrequency === "" ? undefined : updates.recurringFrequency;
+    }
+    if (updates.receiptURL !== undefined) {
+      patch.receiptURL = updates.receiptURL === "" ? undefined : updates.receiptURL;
+    }
+    if (updates.vendor !== undefined) {
+      patch.vendor = updates.vendor === "" ? undefined : updates.vendor;
+    }
+    if (updates.notes !== undefined) {
+      patch.notes = updates.notes === "" ? undefined : updates.notes;
+    }
+
+    await ctx.db.patch(id, patch);
+
+    const updated = await ctx.db.get(id);
+    return {
+      _id: updated!._id,
+      id: updated!._id,
+      propertyId: updated!.propertyId,
+      title: updated!.title,
+      description: updated!.description,
+      amount: updated!.amount,
+      category: updated!.category,
+      date: updated!.date,
+      isRecurring: updated!.isRecurring,
+      recurringFrequency: updated!.recurringFrequency,
+      receiptURL: updated!.receiptURL,
+      vendor: updated!.vendor,
+      notes: updated!.notes,
+      createdAt: updated!.createdAt,
+    };
+  },
+});
+
+/**
+ * Delete expense
+ */
+export const remove = mutation({
+  args: {
+    id: v.id("expenses"),
+  },
+  handler: async (ctx, args) => {
+    const expense = await ctx.db.get(args.id);
+    if (!expense) {
+      throw new Error("Expense not found");
+    }
+    await ctx.db.delete(args.id);
+    return { id: args.id };
+  },
+});

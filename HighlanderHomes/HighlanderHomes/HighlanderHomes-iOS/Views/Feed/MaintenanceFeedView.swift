@@ -510,6 +510,11 @@ struct ProfileSheet: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var avatarImage: UIImage?
     @State private var isUploadingAvatar = false
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var isChangingPassword = false
+    @State private var passwordMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -685,6 +690,72 @@ struct ProfileSheet: View {
                                 .padding(.horizontal, Theme.Spacing.lg)
                                 .padding(.top, Theme.Spacing.md)
                             }
+
+                            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                                Text("Security")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Theme.Colors.textSecondary)
+
+                                SecureField("Current Password", text: $currentPassword)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.slate800)
+                                    }
+
+                                SecureField("New Password", text: $newPassword)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.slate800)
+                                    }
+
+                                SecureField("Confirm New Password", text: $confirmPassword)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.slate800)
+                                    }
+
+                                Button {
+                                    Task { await changePassword() }
+                                } label: {
+                                    HStack {
+                                        if isChangingPassword {
+                                            ProgressView().tint(.white)
+                                        } else {
+                                            Text("Update Password")
+                                        }
+                                    }
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                            .fill(Theme.Colors.slate700)
+                                    }
+                                }
+                                .disabled(!canChangePassword || isChangingPassword)
+                                .opacity(canChangePassword ? 1 : 0.6)
+
+                                if let message = passwordMessage {
+                                    Text(message)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(message.contains("updated") ? Theme.Colors.emerald : Theme.Colors.alertRed)
+                                }
+                            }
+                            .padding(.horizontal, Theme.Spacing.lg)
+                            .padding(.top, Theme.Spacing.md)
                         }
 
 #if DEBUG
@@ -840,6 +911,46 @@ struct ProfileSheet: View {
         let base64 = String(dataURL[dataURL.index(after: commaIndex)...])
         guard let data = Data(base64Encoded: base64) else { return nil }
         return UIImage(data: data)
+    }
+
+    private var canChangePassword: Bool {
+        !currentPassword.isEmpty &&
+        !newPassword.isEmpty &&
+        newPassword == confirmPassword
+    }
+
+    private func changePassword() async {
+        guard !isChangingPassword else { return }
+        passwordMessage = nil
+
+        guard newPassword == confirmPassword else {
+            passwordMessage = "Passwords do not match."
+            return
+        }
+
+        guard isPasswordValid(newPassword) else {
+            passwordMessage = "Password must be at least 8 characters and include letters and numbers."
+            return
+        }
+
+        isChangingPassword = true
+        do {
+            try await convexAuth.changePassword(currentPassword: currentPassword, newPassword: newPassword)
+            passwordMessage = "Password updated."
+            currentPassword = ""
+            newPassword = ""
+            confirmPassword = ""
+        } catch {
+            passwordMessage = error.localizedDescription
+        }
+        isChangingPassword = false
+    }
+
+    private func isPasswordValid(_ value: String) -> Bool {
+        guard value.count >= 8 else { return false }
+        let hasLetter = value.rangeOfCharacter(from: .letters) != nil
+        let hasNumber = value.rangeOfCharacter(from: .decimalDigits) != nil
+        return hasLetter && hasNumber
     }
 }
 

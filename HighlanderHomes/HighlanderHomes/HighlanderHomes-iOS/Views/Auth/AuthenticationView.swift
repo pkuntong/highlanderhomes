@@ -33,9 +33,10 @@ struct AuthenticationView: View {
                                 .frame(width: 100, height: 100)
                                 .shadow(color: Theme.Colors.emerald.opacity(0.5), radius: 20, y: 8)
 
-                            Image(systemName: "building.2.fill")
-                                .font(.system(size: 44))
-                                .foregroundColor(.white)
+                            Image("HighlanderLogo")
+                                .resizable()
+                                .scaledToFit()
+                                .padding(14)
                         }
                         .padding(.top, Theme.Spacing.xxl)
 

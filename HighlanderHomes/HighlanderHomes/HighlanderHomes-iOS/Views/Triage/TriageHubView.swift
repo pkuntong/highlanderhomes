@@ -759,9 +759,37 @@ struct ContactButton: View {
     }
 }
 
-// MARK: - New Maintenance Request View (Placeholder)
+// MARK: - New Maintenance Request View
 struct NewMaintenanceRequestView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService: ConvexDataService
+
+    @State private var propertyId: String = ""
+    @State private var tenantId: String = ""
+    @State private var title: String = ""
+    @State private var descriptionText: String = ""
+    @State private var category: String = "plumbing"
+    @State private var priority: String = "normal"
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    private let categories = [
+        "plumbing",
+        "electrical",
+        "hvac",
+        "appliance",
+        "structural",
+        "landscaping",
+        "other"
+    ]
+
+    private let priorities = [
+        "low",
+        "normal",
+        "high",
+        "urgent",
+        "emergency"
+    ]
 
     var body: some View {
         NavigationStack {
@@ -769,29 +797,153 @@ struct NewMaintenanceRequestView: View {
                 Theme.Colors.background
                     .ignoresSafeArea()
 
-                Text("New Request Form")
-                    .foregroundColor(Theme.Colors.textPrimary)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                        if let errorMessage = errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.Colors.alertRed)
+                        }
+
+                        if dataService.properties.isEmpty {
+                            Text("Add a property first to create a maintenance request.")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                        } else {
+                            Picker("Property", selection: $propertyId) {
+                                Text("Select Property").tag("")
+                                ForEach(dataService.properties) { property in
+                                    Text(property.name).tag(property.id)
+                                }
+                            }
+                            .onChange(of: propertyId) { _ in
+                                syncTenantSelection()
+                            }
+
+                            if !tenantOptions.isEmpty || !propertyId.isEmpty {
+                                Picker("Tenant", selection: $tenantId) {
+                                    Text("No Tenant").tag("")
+                                    ForEach(tenantOptions) { tenant in
+                                        Text(tenant.fullName).tag(tenant.id)
+                                    }
+                                }
+                            }
+                        }
+
+                        TextField("Issue Title", text: $title)
+                            .textFieldStyle(.roundedBorder)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Description")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            ZStack(alignment: .topLeading) {
+                                TextEditor(text: $descriptionText)
+                                    .frame(minHeight: 120)
+                                    .padding(8)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                            .fill(Theme.Colors.slate800)
+                                    }
+
+                                if descriptionText.isEmpty {
+                                    Text("Describe the issue...")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(Theme.Colors.textMuted)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 16)
+                                }
+                            }
+                        }
+
+                        Picker("Category", selection: $category) {
+                            ForEach(categories, id: \.self) { item in
+                                Text(item.capitalized).tag(item)
+                            }
+                        }
+
+                        Picker("Priority", selection: $priority) {
+                            ForEach(priorities, id: \.self) { item in
+                                Text(item.capitalized).tag(item)
+                            }
+                        }
+                    }
+                    .padding(Theme.Spacing.md)
+                }
             }
             .navigationTitle("New Request")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundColor(Theme.Colors.slate400)
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Theme.Colors.slate400)
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Save") {
-                        HapticManager.shared.success()
-                        dismiss()
+                        Task { await handleSave() }
                     }
                     .fontWeight(.semibold)
                     .foregroundColor(Theme.Colors.emerald)
+                    .disabled(!canSave || isSaving)
                 }
             }
         }
+        .onAppear {
+            if propertyId.isEmpty, let first = dataService.properties.first {
+                propertyId = first.id
+            }
+        }
+    }
+
+    private var tenantOptions: [ConvexTenant] {
+        guard !propertyId.isEmpty else { return [] }
+        return dataService.tenants.filter { $0.propertyId == propertyId }
+    }
+
+    private var canSave: Bool {
+        !propertyId.isEmpty &&
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func syncTenantSelection() {
+        let validTenantIds = tenantOptions.map { $0.id }
+        if !validTenantIds.contains(tenantId) {
+            tenantId = ""
+        }
+    }
+
+    private func handleSave() async {
+        guard !isSaving else { return }
+        errorMessage = nil
+        isSaving = true
+
+        do {
+            guard canSave else {
+                throw ConvexError.serverError("Property, title, and description are required.")
+            }
+
+            let input = ConvexMaintenanceRequestInput(
+                propertyId: propertyId,
+                tenantId: tenantId.isEmpty ? nil : tenantId,
+                title: title,
+                descriptionText: descriptionText,
+                category: category,
+                priority: priority,
+                photoURLs: nil
+            )
+
+            _ = try await dataService.createMaintenanceRequest(input)
+            await dataService.loadAllData()
+            HapticManager.shared.success()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            HapticManager.shared.error()
+        }
+
+        isSaving = false
     }
 }
 

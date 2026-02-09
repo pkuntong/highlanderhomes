@@ -137,35 +137,32 @@ struct SplashView: View {
 // MARK: - App State
 @MainActor
 class AppState: ObservableObject {
-    @Published var selectedTab: Tab = .transactions
-    @Published var showingQuickEntry: Bool = false
+    @Published var selectedTab: Tab = .dashboard
     @Published var isModalPresented: Bool = false
-    @Published var notificationBadgeCount: Int = 3
+    @Published var showingSettings: Bool = false
+    @Published var notificationBadgeCount: Int = 0
 
     enum Tab: Int, CaseIterable {
-        case transactions
-        case feed
-        case triage
         case dashboard
-        case vault
+        case properties
+        case maintenance
+        case finances
 
         var title: String {
             switch self {
-            case .transactions: return "Transactions"
-            case .feed: return "Feed"
-            case .triage: return "Triage"
-            case .dashboard: return "Command"
-            case .vault: return "Vault"
+            case .dashboard: return "Dashboard"
+            case .properties: return "Properties"
+            case .maintenance: return "Maintenance"
+            case .finances: return "Finances"
             }
         }
 
         var icon: String {
             switch self {
-            case .transactions: return "dollarsign.circle.fill"
-            case .feed: return "rectangle.stack.fill"
-            case .triage: return "wrench.and.screwdriver.fill"
-            case .dashboard: return "chart.bar.fill"
-            case .vault: return "building.2.fill"
+            case .dashboard: return "chart.pie.fill"
+            case .properties: return "building.2.fill"
+            case .maintenance: return "wrench.and.screwdriver.fill"
+            case .finances: return "dollarsign.circle.fill"
             }
         }
     }

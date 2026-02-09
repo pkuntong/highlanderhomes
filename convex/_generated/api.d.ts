@@ -13,10 +13,12 @@ import type * as authInternal from "../authInternal.js";
 import type * as contractors from "../contractors.js";
 import type * as expenses from "../expenses.js";
 import type * as feedEvents from "../feedEvents.js";
+import type * as insurancePolicies from "../insurancePolicies.js";
 import type * as maintenanceRequests from "../maintenanceRequests.js";
 import type * as migrations from "../migrations.js";
 import type * as properties from "../properties.js";
 import type * as rentPayments from "../rentPayments.js";
+import type * as rentalLicenses from "../rentalLicenses.js";
 import type * as tenants from "../tenants.js";
 import type * as users from "../users.js";
 
@@ -32,10 +34,12 @@ declare const fullApi: ApiFromModules<{
   contractors: typeof contractors;
   expenses: typeof expenses;
   feedEvents: typeof feedEvents;
+  insurancePolicies: typeof insurancePolicies;
   maintenanceRequests: typeof maintenanceRequests;
   migrations: typeof migrations;
   properties: typeof properties;
   rentPayments: typeof rentPayments;
+  rentalLicenses: typeof rentalLicenses;
   tenants: typeof tenants;
   users: typeof users;
 }>;

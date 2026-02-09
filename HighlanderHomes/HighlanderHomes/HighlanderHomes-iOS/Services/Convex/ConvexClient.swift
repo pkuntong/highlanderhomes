@@ -70,8 +70,12 @@ class ConvexClient: ObservableObject {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data) {
-                throw ConvexError.serverError(errorBody.message ?? "Unknown server error")
+            if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data),
+               let message = errorBody.message, !message.isEmpty {
+                throw ConvexError.serverError(message)
+            }
+            if let message = extractErrorMessage(from: data) {
+                throw ConvexError.serverError(message)
             }
             throw ConvexError.httpError(statusCode: httpResponse.statusCode)
         }
@@ -107,8 +111,12 @@ class ConvexClient: ObservableObject {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data) {
-                throw ConvexError.serverError(errorBody.message ?? "Unknown server error")
+            if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data),
+               let message = errorBody.message, !message.isEmpty {
+                throw ConvexError.serverError(message)
+            }
+            if let message = extractErrorMessage(from: data) {
+                throw ConvexError.serverError(message)
             }
             throw ConvexError.httpError(statusCode: httpResponse.statusCode)
         }
@@ -152,8 +160,12 @@ class ConvexClient: ObservableObject {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
-            if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data) {
-                throw ConvexError.serverError(errorBody.message ?? "Unknown server error")
+            if let errorBody = try? JSONDecoder().decode(ConvexErrorResponse.self, from: data),
+               let message = errorBody.message, !message.isEmpty {
+                throw ConvexError.serverError(message)
+            }
+            if let message = extractErrorMessage(from: data) {
+                throw ConvexError.serverError(message)
             }
             throw ConvexError.httpError(statusCode: httpResponse.statusCode)
         }
@@ -354,7 +366,13 @@ private extension ConvexClient {
             let wrapper = try decoder.decode(ConvexResponse<T>.self, from: data)
 
             if let status = wrapper.status, status.lowercased() == "error" {
-                throw ConvexError.serverError(wrapper.error?.message ?? "Unknown server error")
+                if let message = wrapper.error?.message, !message.isEmpty {
+                    throw ConvexError.serverError(message)
+                }
+                if let message = extractErrorMessage(from: data) {
+                    throw ConvexError.serverError(message)
+                }
+                throw ConvexError.serverError("Unknown server error")
             }
 
             if let value = wrapper.value {
@@ -371,5 +389,30 @@ private extension ConvexClient {
         } catch {
             throw ConvexError.decodingError(error)
         }
+    }
+
+    func extractErrorMessage(from data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        if let message = json["message"] as? String, !message.isEmpty {
+            return message
+        }
+
+        if let errorString = json["error"] as? String, !errorString.isEmpty {
+            return errorString
+        }
+
+        if let errorDict = json["error"] as? [String: Any] {
+            if let message = errorDict["message"] as? String, !message.isEmpty {
+                return message
+            }
+            if let dataMessage = errorDict["data"] as? String, !dataMessage.isEmpty {
+                return dataMessage
+            }
+        }
+
+        return nil
     }
 }

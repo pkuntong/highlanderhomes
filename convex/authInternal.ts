@@ -97,3 +97,17 @@ export const updateLastLogin = internalMutation({
     });
   },
 });
+
+export const setPassword = internalMutation({
+  args: {
+    userId: v.id("users"),
+    passwordHash: v.string(),
+    passwordSalt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      passwordHash: args.passwordHash,
+      passwordSalt: args.passwordSalt,
+    });
+  },
+});

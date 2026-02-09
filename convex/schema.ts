@@ -95,6 +95,9 @@ export default defineSchema({
   contractors: defineTable({
     companyName: v.string(),
     contactName: v.string(),
+    address: v.optional(v.string()),
+    website: v.optional(v.string()),
+    notes: v.optional(v.string()),
     email: v.string(),
     phone: v.string(),
     specialty: v.array(v.string()), // ["Plumbing", "Electrical", etc.]
@@ -146,6 +149,42 @@ export default defineSchema({
     .index("by_property", ["propertyId"])
     .index("by_user", ["userId"])
     .index("by_date", ["date"]),
+
+  // Insurance Policies table
+  insurancePolicies: defineTable({
+    propertyId: v.optional(v.id("properties")),
+    propertyLabel: v.string(),
+    insuranceName: v.string(),
+    policyNumber: v.string(),
+    termStart: v.number(),
+    termEnd: v.number(),
+    premium: v.number(),
+    notes: v.optional(v.string()),
+    agent: v.optional(v.string()),
+    userId: v.id("users"), // Property owner
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_property", ["propertyId"]),
+
+  // Rental Licenses table
+  rentalLicenses: defineTable({
+    propertyId: v.optional(v.id("properties")),
+    propertyLabel: v.string(),
+    category: v.string(),
+    licenseNumber: v.string(),
+    dateFrom: v.number(),
+    dateTo: v.number(),
+    unitFees: v.number(),
+    link: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    userId: v.id("users"), // Property owner
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_property", ["propertyId"]),
 
   // Feed Events table (activity feed)
   feedEvents: defineTable({

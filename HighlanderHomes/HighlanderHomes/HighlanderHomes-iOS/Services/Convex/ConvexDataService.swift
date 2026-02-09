@@ -16,6 +16,8 @@ class ConvexDataService: ObservableObject {
     @Published var feedEvents: [ConvexFeedEvent] = []
     @Published var rentPayments: [ConvexRentPayment] = []
     @Published var expenses: [ConvexExpense] = []
+    @Published var insurancePolicies: [ConvexInsurancePolicy] = []
+    @Published var rentalLicenses: [ConvexRentalLicense] = []
 
     @Published var isLoading: Bool = false
     @Published var error: String?
@@ -136,6 +138,8 @@ class ConvexDataService: ObservableObject {
             async let cons = fetchContractors()
             async let rents = fetchRentPayments()
             async let exps = fetchExpenses()
+            async let policies = fetchInsurancePolicies()
+            async let licenses = fetchRentalLicenses()
 
             properties = try await props
             tenants = try await tens
@@ -143,6 +147,8 @@ class ConvexDataService: ObservableObject {
             contractors = try await cons
             rentPayments = try await rents
             expenses = try await exps
+            insurancePolicies = try await policies
+            rentalLicenses = try await licenses
 
             // Generate feed events
             generateFeedEvents()
@@ -198,6 +204,20 @@ class ConvexDataService: ObservableObject {
         ) { [weak self] (expenses: [ConvexExpense]) in
             self?.expenses = expenses
         }
+
+        client.subscribe(
+            to: ConvexConfig.Functions.getInsurancePolicies,
+            args: ["userId": userId]
+        ) { [weak self] (policies: [ConvexInsurancePolicy]) in
+            self?.insurancePolicies = policies
+        }
+
+        client.subscribe(
+            to: ConvexConfig.Functions.getRentalLicenses,
+            args: ["userId": userId]
+        ) { [weak self] (licenses: [ConvexRentalLicense]) in
+            self?.rentalLicenses = licenses
+        }
     }
 
     func unsubscribeFromUpdates() {
@@ -206,6 +226,8 @@ class ConvexDataService: ObservableObject {
         client.unsubscribe(from: ConvexConfig.Functions.getTenants)
         client.unsubscribe(from: ConvexConfig.Functions.getRentPayments)
         client.unsubscribe(from: ConvexConfig.Functions.getExpenses)
+        client.unsubscribe(from: ConvexConfig.Functions.getInsurancePolicies)
+        client.unsubscribe(from: ConvexConfig.Functions.getRentalLicenses)
     }
 
     // MARK: - User ID Helper
@@ -354,6 +376,45 @@ class ConvexDataService: ObservableObject {
         return try await client.mutation(ConvexConfig.Functions.createRentPayment, args: args)
     }
 
+    func updateRentPayment(
+        id: String,
+        propertyId: String,
+        tenantId: String?,
+        clearTenantId: Bool,
+        amount: Double,
+        paymentDate: Date,
+        paymentMethod: String,
+        status: String,
+        transactionId: String,
+        notes: String
+    ) async throws -> ConvexRentPayment {
+        var args: [String: Any] = [
+            "id": id,
+            "propertyId": propertyId,
+            "amount": amount,
+            "paymentDate": paymentDate.timeIntervalSince1970 * 1000,
+            "status": status,
+            "paymentMethod": paymentMethod,
+            "transactionId": transactionId,
+            "notes": notes
+        ]
+
+        if clearTenantId {
+            args["clearTenantId"] = true
+        } else if let tenantId = tenantId, !tenantId.isEmpty {
+            args["tenantId"] = tenantId
+        }
+
+        return try await client.mutation(ConvexConfig.Functions.updateRentPayment, args: args)
+    }
+
+    func deleteRentPayment(id: String) async throws {
+        try await client.mutation(
+            ConvexConfig.Functions.deleteRentPayment,
+            args: ["id": id]
+        )
+    }
+
     // MARK: - Expenses
     func fetchExpenses() async throws -> [ConvexExpense] {
         guard let userId = effectiveUserId else {
@@ -361,6 +422,28 @@ class ConvexDataService: ObservableObject {
         }
         return try await client.query(
             ConvexConfig.Functions.getExpenses,
+            args: ["userId": userId]
+        )
+    }
+
+    // MARK: - Insurance Policies
+    func fetchInsurancePolicies() async throws -> [ConvexInsurancePolicy] {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        return try await client.query(
+            ConvexConfig.Functions.getInsurancePolicies,
+            args: ["userId": userId]
+        )
+    }
+
+    // MARK: - Rental Licenses
+    func fetchRentalLicenses() async throws -> [ConvexRentalLicense] {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        return try await client.query(
+            ConvexConfig.Functions.getRentalLicenses,
             args: ["userId": userId]
         )
     }
@@ -374,6 +457,177 @@ class ConvexDataService: ObservableObject {
         return try await client.mutation(ConvexConfig.Functions.createExpense, args: args)
     }
 
+    func updateExpense(
+        id: String,
+        propertyId: String?,
+        clearPropertyId: Bool,
+        title: String,
+        description: String,
+        amount: Double,
+        category: String,
+        date: Date,
+        isRecurring: Bool,
+        recurringFrequency: String,
+        receiptURL: String,
+        vendor: String,
+        notes: String
+    ) async throws -> ConvexExpense {
+        var args: [String: Any] = [
+            "id": id,
+            "title": title,
+            "description": description,
+            "amount": amount,
+            "category": category,
+            "date": date.timeIntervalSince1970 * 1000,
+            "isRecurring": isRecurring,
+            "recurringFrequency": recurringFrequency,
+            "receiptURL": receiptURL,
+            "vendor": vendor,
+            "notes": notes
+        ]
+
+        if clearPropertyId {
+            args["clearPropertyId"] = true
+        } else if let propertyId = propertyId, !propertyId.isEmpty {
+            args["propertyId"] = propertyId
+        }
+
+        return try await client.mutation(ConvexConfig.Functions.updateExpense, args: args)
+    }
+
+    func deleteExpense(id: String) async throws {
+        try await client.mutation(
+            ConvexConfig.Functions.deleteExpense,
+            args: ["id": id]
+        )
+    }
+
+    func createInsurancePolicy(
+        propertyId: String?,
+        propertyLabel: String,
+        insuranceName: String,
+        policyNumber: String,
+        termStart: Date,
+        termEnd: Date,
+        premium: Double,
+        notes: String?,
+        agent: String?
+    ) async throws -> ConvexInsurancePolicy {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        var args: [String: Any] = [
+            "propertyLabel": propertyLabel,
+            "insuranceName": insuranceName,
+            "policyNumber": policyNumber,
+            "termStart": termStart.timeIntervalSince1970 * 1000,
+            "termEnd": termEnd.timeIntervalSince1970 * 1000,
+            "premium": premium,
+            "userId": userId
+        ]
+        if let propertyId = propertyId, !propertyId.isEmpty { args["propertyId"] = propertyId }
+        if let notes = notes { args["notes"] = notes }
+        if let agent = agent { args["agent"] = agent }
+        return try await client.mutation(ConvexConfig.Functions.createInsurancePolicy, args: args)
+    }
+
+    func updateInsurancePolicy(
+        id: String,
+        propertyId: String?,
+        propertyLabel: String,
+        insuranceName: String,
+        policyNumber: String,
+        termStart: Date,
+        termEnd: Date,
+        premium: Double,
+        notes: String?,
+        agent: String?
+    ) async throws -> ConvexInsurancePolicy {
+        var args: [String: Any] = [
+            "id": id,
+            "propertyLabel": propertyLabel,
+            "insuranceName": insuranceName,
+            "policyNumber": policyNumber,
+            "termStart": termStart.timeIntervalSince1970 * 1000,
+            "termEnd": termEnd.timeIntervalSince1970 * 1000,
+            "premium": premium
+        ]
+        if let propertyId = propertyId { args["propertyId"] = propertyId }
+        if let notes = notes { args["notes"] = notes }
+        if let agent = agent { args["agent"] = agent }
+        return try await client.mutation(ConvexConfig.Functions.updateInsurancePolicy, args: args)
+    }
+
+    func deleteInsurancePolicy(id: String) async throws {
+        try await client.mutation(
+            ConvexConfig.Functions.deleteInsurancePolicy,
+            args: ["id": id]
+        )
+    }
+
+    func createRentalLicense(
+        propertyId: String?,
+        propertyLabel: String,
+        category: String,
+        licenseNumber: String,
+        dateFrom: Date,
+        dateTo: Date,
+        unitFees: Double,
+        link: String?,
+        notes: String?
+    ) async throws -> ConvexRentalLicense {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        var args: [String: Any] = [
+            "propertyLabel": propertyLabel,
+            "category": category,
+            "licenseNumber": licenseNumber,
+            "dateFrom": dateFrom.timeIntervalSince1970 * 1000,
+            "dateTo": dateTo.timeIntervalSince1970 * 1000,
+            "unitFees": unitFees,
+            "userId": userId
+        ]
+        if let propertyId = propertyId, !propertyId.isEmpty { args["propertyId"] = propertyId }
+        if let link = link { args["link"] = link }
+        if let notes = notes { args["notes"] = notes }
+        return try await client.mutation(ConvexConfig.Functions.createRentalLicense, args: args)
+    }
+
+    func updateRentalLicense(
+        id: String,
+        propertyId: String?,
+        propertyLabel: String,
+        category: String,
+        licenseNumber: String,
+        dateFrom: Date,
+        dateTo: Date,
+        unitFees: Double,
+        link: String?,
+        notes: String?
+    ) async throws -> ConvexRentalLicense {
+        var args: [String: Any] = [
+            "id": id,
+            "propertyLabel": propertyLabel,
+            "category": category,
+            "licenseNumber": licenseNumber,
+            "dateFrom": dateFrom.timeIntervalSince1970 * 1000,
+            "dateTo": dateTo.timeIntervalSince1970 * 1000,
+            "unitFees": unitFees
+        ]
+        if let propertyId = propertyId { args["propertyId"] = propertyId }
+        if let link = link { args["link"] = link }
+        if let notes = notes { args["notes"] = notes }
+        return try await client.mutation(ConvexConfig.Functions.updateRentalLicense, args: args)
+    }
+
+    func deleteRentalLicense(id: String) async throws {
+        try await client.mutation(
+            ConvexConfig.Functions.deleteRentalLicense,
+            args: ["id": id]
+        )
+    }
+
     func createContractor(_ contractor: ConvexContractorInput) async throws -> ConvexContractor {
         guard let userId = effectiveUserId else {
             throw ConvexError.notAuthenticated
@@ -381,6 +635,38 @@ class ConvexDataService: ObservableObject {
         var args = contractor.toDictionary()
         args["userId"] = userId
         return try await client.mutation(ConvexConfig.Functions.createContractor, args: args)
+    }
+
+    func updateContractor(
+        id: String,
+        companyName: String,
+        contactName: String,
+        address: String?,
+        website: String?,
+        notes: String?,
+        email: String,
+        phone: String,
+        specialty: [String],
+        hourlyRate: Double?,
+        rating: Double?,
+        isPreferred: Bool
+    ) async throws -> ConvexContractor {
+        var args: [String: Any] = [
+            "id": id,
+            "companyName": companyName,
+            "contactName": contactName,
+            "email": email,
+            "phone": phone,
+            "specialty": specialty,
+            "isPreferred": isPreferred
+        ]
+        if let address = address { args["address"] = address }
+        if let website = website { args["website"] = website }
+        if let notes = notes { args["notes"] = notes }
+        if let hourlyRate = hourlyRate { args["hourlyRate"] = hourlyRate }
+        if let rating = rating { args["rating"] = rating }
+
+        return try await client.mutation(ConvexConfig.Functions.updateContractor, args: args)
     }
 
     // MARK: - Feed Events
@@ -417,7 +703,9 @@ class ConvexDataService: ObservableObject {
 
 // MARK: - Convex Data Models (must match convex/schema.ts)
 
-struct ConvexProperty: Codable, Identifiable {
+struct ConvexProperty: Codable, Identifiable, Hashable {
+    static func == (lhs: ConvexProperty, rhs: ConvexProperty) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
     let id: String
     var name: String
     var address: String
@@ -748,10 +1036,139 @@ struct ConvexExpenseInput {
     }
 }
 
+struct ConvexInsurancePolicy: Codable, Identifiable {
+    let id: String
+    var propertyId: String?
+    var propertyLabel: String
+    var insuranceName: String
+    var policyNumber: String
+    var termStart: Double
+    var termEnd: Double
+    var premium: Double
+    var notes: String?
+    var agent: String?
+    var createdAt: Double
+    var updatedAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case propertyId, propertyLabel, insuranceName, policyNumber
+        case termStart, termEnd, premium, notes, agent
+        case createdAt, updatedAt
+    }
+
+    static let termFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }()
+
+    static let premiumFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }()
+
+    var termStartDate: Date {
+        Date(timeIntervalSince1970: termStart / 1000)
+    }
+
+    var termEndDate: Date {
+        Date(timeIntervalSince1970: termEnd / 1000)
+    }
+
+    var termDisplay: String {
+        "\(Self.termFormatter.string(from: termStartDate)) – \(Self.termFormatter.string(from: termEndDate))"
+    }
+
+    var premiumDisplay: String {
+        Self.premiumFormatter.string(from: NSNumber(value: premium)) ?? "$\(premium)"
+    }
+
+    var daysUntilExpiration: Int {
+        Calendar.current.dateComponents([.day], from: Date(), to: termEndDate).day ?? 0
+    }
+
+    var isExpired: Bool {
+        daysUntilExpiration < 0
+    }
+
+    var isExpiringSoon: Bool {
+        daysUntilExpiration >= 0 && daysUntilExpiration <= 60
+    }
+}
+
+struct ConvexRentalLicense: Codable, Identifiable {
+    let id: String
+    var propertyId: String?
+    var propertyLabel: String
+    var category: String
+    var licenseNumber: String
+    var dateFrom: Double
+    var dateTo: Double
+    var unitFees: Double
+    var link: String?
+    var notes: String?
+    var createdAt: Double
+    var updatedAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case propertyId, propertyLabel, category, licenseNumber
+        case dateFrom, dateTo, unitFees, link, notes
+        case createdAt, updatedAt
+    }
+
+    static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }()
+
+    static let moneyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }()
+
+    var dateFromValue: Date {
+        Date(timeIntervalSince1970: dateFrom / 1000)
+    }
+
+    var dateToValue: Date {
+        Date(timeIntervalSince1970: dateTo / 1000)
+    }
+
+    var termDisplay: String {
+        "\(Self.dateFormatter.string(from: dateFromValue)) – \(Self.dateFormatter.string(from: dateToValue))"
+    }
+
+    var unitFeesDisplay: String {
+        Self.moneyFormatter.string(from: NSNumber(value: unitFees)) ?? "$\(unitFees)"
+    }
+
+    var daysUntilExpiration: Int {
+        Calendar.current.dateComponents([.day], from: Date(), to: dateToValue).day ?? 0
+    }
+
+    var isExpired: Bool {
+        daysUntilExpiration < 0
+    }
+
+    var isExpiringSoon: Bool {
+        daysUntilExpiration >= 0 && daysUntilExpiration <= 60
+    }
+}
+
 struct ConvexContractor: Codable, Identifiable {
     let id: String
     var companyName: String
     var contactName: String
+    var address: String?
+    var website: String?
+    var notes: String?
     var email: String
     var phone: String
     var specialty: [String] // Array of specialties
@@ -763,7 +1180,7 @@ struct ConvexContractor: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case companyName, contactName, email, phone
+        case companyName, contactName, address, website, notes, email, phone
         case specialty, hourlyRate, rating, isPreferred
         case createdAt, updatedAt
     }
@@ -780,6 +1197,9 @@ struct ConvexContractor: Codable, Identifiable {
 struct ConvexContractorInput {
     var companyName: String
     var contactName: String
+    var address: String?
+    var website: String?
+    var notes: String?
     var email: String
     var phone: String
     var specialty: [String]
@@ -796,6 +1216,15 @@ struct ConvexContractorInput {
             "specialty": specialty,
             "isPreferred": isPreferred
         ]
+        if let address = address, !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            dict["address"] = address
+        }
+        if let website = website, !website.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            dict["website"] = website
+        }
+        if let notes = notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            dict["notes"] = notes
+        }
         if let hourlyRate = hourlyRate { dict["hourlyRate"] = hourlyRate }
         if let rating = rating { dict["rating"] = rating }
         return dict

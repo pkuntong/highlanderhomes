@@ -334,6 +334,113 @@ export const verifyEmail = action({
 });
 
 /**
+ * Change password for an email/password account
+ */
+export const changePassword = action({
+  args: {
+    email: v.string(),
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = normalizeEmail(args.email);
+    if (!validateEmail(email)) {
+      throw new Error("Please enter a valid email address.");
+    }
+
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, { email });
+    if (!user) {
+      throw new Error("Invalid email or password");
+    }
+
+    if (!user.passwordHash || !user.passwordSalt) {
+      throw new Error("Password sign-in not enabled for this account.");
+    }
+
+    const incomingHash = hashPassword(args.currentPassword, user.passwordSalt);
+    if (incomingHash !== user.passwordHash) {
+      throw new Error("Current password is incorrect.");
+    }
+
+    if (!validatePassword(args.newPassword)) {
+      throw new Error("Password must be at least 8 characters and include letters and numbers.");
+    }
+
+    const salt = randomBytes(16).toString("hex");
+    const passwordHash = hashPassword(args.newPassword, salt);
+
+    await ctx.runMutation(internal.authInternal.setPassword, {
+      userId: user._id,
+      passwordHash,
+      passwordSalt: salt,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Force-verify an email (admin use)
+ */
+export const forceVerifyEmail = action({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = normalizeEmail(args.email);
+    if (!validateEmail(email)) {
+      throw new Error("Please enter a valid email address.");
+    }
+
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, { email });
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.runMutation(internal.authInternal.markEmailVerified, {
+      userId: user._id,
+    });
+
+    return await ctx.runQuery(internal.authInternal.getUser, { userId: user._id });
+  },
+});
+
+/**
+ * Force set password for an email (admin use)
+ */
+export const forceSetPassword = action({
+  args: {
+    email: v.string(),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = normalizeEmail(args.email);
+    if (!validateEmail(email)) {
+      throw new Error("Please enter a valid email address.");
+    }
+    if (!validatePassword(args.password)) {
+      throw new Error("Password must be at least 8 characters and include letters and numbers.");
+    }
+
+    const user = await ctx.runQuery(internal.authInternal.findUserByEmail, { email });
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const salt = randomBytes(16).toString("hex");
+    const passwordHash = hashPassword(args.password, salt);
+
+    await ctx.runMutation(internal.authInternal.setPassword, {
+      userId: user._id,
+      passwordHash,
+      passwordSalt: salt,
+    });
+
+    return await ctx.runQuery(internal.authInternal.getUser, { userId: user._id });
+  },
+});
+
+/**
  * Reset password
  */
 export const resetPassword = action({

@@ -63,6 +63,7 @@ class ConvexAuth: ObservableObject {
     // MARK: - Email Authentication
     func signUp(email: String, password: String, name: String) async throws -> Bool {
         authError = nil
+        clearAuth()
 
         let response: SignUpResponse = try await client.action(
             "auth:signUp",
@@ -74,9 +75,6 @@ class ConvexAuth: ObservableObject {
         )
 
         let verificationSent = response.verificationSent ?? false
-        if !verificationSent {
-            saveAuth(token: response.token, user: response.user)
-        }
         HapticManager.shared.success()
         return verificationSent
     }
@@ -106,6 +104,23 @@ class ConvexAuth: ObservableObject {
             "auth:resetPassword",
             args: ["email": email]
         ) as EmptyConvexResponse
+
+        HapticManager.shared.success()
+    }
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        guard let email = currentUser?.email else {
+            throw ConvexError.notAuthenticated
+        }
+
+        let _: ChangePasswordResponse = try await client.action(
+            ConvexConfig.Functions.changePassword,
+            args: [
+                "email": email,
+                "currentPassword": currentPassword,
+                "newPassword": newPassword
+            ]
+        )
 
         HapticManager.shared.success()
     }
@@ -231,6 +246,10 @@ struct SignUpResponse: Decodable {
     let token: String
     let user: ConvexUser
     let verificationSent: Bool?
+}
+
+struct ChangePasswordResponse: Decodable {
+    let success: Bool
 }
 
 struct ConvexUser: Codable, Identifiable {
