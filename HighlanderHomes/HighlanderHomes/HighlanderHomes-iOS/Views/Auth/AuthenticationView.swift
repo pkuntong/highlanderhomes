@@ -30,24 +30,24 @@ struct AuthenticationView: View {
                     VStack(spacing: Theme.Spacing.md) {
                         // App Icon
                         ZStack {
-                            RoundedRectangle(cornerRadius: 20)
+                            RoundedRectangle(cornerRadius: 16)
                                 .fill(Theme.Gradients.emeraldGlow)
-                                .frame(width: 76, height: 76)
-                                .shadow(color: Theme.Colors.emerald.opacity(0.35), radius: 14, y: 6)
+                                .frame(width: 60, height: 60)
+                                .shadow(color: Theme.Colors.emerald.opacity(0.3), radius: 12, y: 5)
 
                             Image("HighlanderLogo")
                                 .resizable()
                                 .scaledToFit()
-                                .padding(10)
+                                .padding(8)
                         }
                         .padding(.top, Theme.Spacing.xl)
 
                         Text("Highlander Homes")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(Theme.Colors.textPrimary)
 
                         Text("Property management, reimagined")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(Theme.Colors.textSecondary)
                     }
 

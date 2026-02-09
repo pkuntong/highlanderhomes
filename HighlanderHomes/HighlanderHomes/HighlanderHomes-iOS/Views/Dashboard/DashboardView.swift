@@ -423,6 +423,7 @@ struct RecentActivitySection: View {
 
 struct ActivityRow: View {
     let event: ConvexFeedEvent
+    @EnvironmentObject var appState: AppState
 
     private var eventIcon: String {
         if event.type.contains("maintenance") { return "wrench.fill" }
@@ -438,6 +439,13 @@ struct ActivityRow: View {
         if event.type.contains("contractor") { return Theme.Colors.infoBlue }
         if event.type.contains("tenant") { return Theme.Colors.emerald }
         return Theme.Colors.slate400
+    }
+
+    private var targetTab: AppState.Tab {
+        if event.type.contains("maintenance") { return .maintenance }
+        if event.type.contains("rent") || event.type.contains("payment") || event.type.contains("expense") { return .finances }
+        if event.type.contains("contractor") || event.type.contains("tenant") || event.type.contains("property") { return .properties }
+        return .dashboard
     }
 
     var body: some View {
@@ -471,6 +479,11 @@ struct ActivityRow: View {
                 .foregroundColor(Theme.Colors.textMuted)
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            appState.selectedTab = targetTab
+            HapticManager.shared.impact(.light)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(event.title), \(event.subtitle), \(event.timeAgo)")
     }
