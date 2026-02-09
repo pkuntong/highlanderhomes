@@ -15,6 +15,8 @@ struct AuthenticationView: View {
     @State private var showForgotPassword = false
     @State private var showVerifyEmail = false
     @State private var currentNonce: String?
+    @State private var showTerms = false
+    @State private var showPrivacy = false
 
     var body: some View {
         ZStack {
@@ -28,17 +30,17 @@ struct AuthenticationView: View {
                     VStack(spacing: Theme.Spacing.md) {
                         // App Icon
                         ZStack {
-                            RoundedRectangle(cornerRadius: 24)
+                            RoundedRectangle(cornerRadius: 20)
                                 .fill(Theme.Gradients.emeraldGlow)
-                                .frame(width: 100, height: 100)
-                                .shadow(color: Theme.Colors.emerald.opacity(0.5), radius: 20, y: 8)
+                                .frame(width: 76, height: 76)
+                                .shadow(color: Theme.Colors.emerald.opacity(0.35), radius: 14, y: 6)
 
                             Image("HighlanderLogo")
                                 .resizable()
                                 .scaledToFit()
-                                .padding(14)
+                                .padding(10)
                         }
-                        .padding(.top, Theme.Spacing.xxl)
+                        .padding(.top, Theme.Spacing.xl)
 
                         Text("Highlander Homes")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -197,7 +199,7 @@ struct AuthenticationView: View {
                             .foregroundColor(Theme.Colors.textMuted)
 
                         HStack(spacing: 4) {
-                            Button("Terms of Service") {}
+                            Button("Terms of Service") { showTerms = true }
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(Theme.Colors.emerald)
 
@@ -205,7 +207,7 @@ struct AuthenticationView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(Theme.Colors.textMuted)
 
-                            Button("Privacy Policy") {}
+                            Button("Privacy Policy") { showPrivacy = true }
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(Theme.Colors.emerald)
                         }
@@ -220,6 +222,18 @@ struct AuthenticationView: View {
         }
         .sheet(isPresented: $showVerifyEmail) {
             VerifyEmailFromAuthSheet(email: $email)
+        }
+        .sheet(isPresented: $showTerms) {
+            LegalDocumentSheet(
+                title: "Terms of Service",
+                bodyText: LegalDocuments.terms
+            )
+        }
+        .sheet(isPresented: $showPrivacy) {
+            LegalDocumentSheet(
+                title: "Privacy Policy",
+                bodyText: LegalDocuments.privacy
+            )
         }
     }
 
@@ -683,4 +697,73 @@ struct VerifyEmailFromAuthSheet: View {
 
 #Preview {
     AuthenticationView()
+}
+
+struct LegalDocumentSheet: View {
+    let title: String
+    let bodyText: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(bodyText)
+                    .font(.system(size: 14))
+                    .foregroundColor(Theme.Colors.textPrimary)
+                    .padding(Theme.Spacing.lg)
+            }
+            .background(Theme.Colors.background.ignoresSafeArea())
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(Theme.Colors.emerald)
+                }
+            }
+        }
+    }
+}
+
+enum LegalDocuments {
+    static let terms = """
+Effective date: February 9, 2026
+
+1. Acceptance of Terms
+By accessing or using Highlander Homes, you agree to these Terms of Service.
+
+2. Use of the Service
+You agree to use the service only for lawful purposes and in compliance with applicable laws.
+
+3. Accounts
+You are responsible for maintaining the confidentiality of your account credentials.
+
+4. Subscription & Billing
+Paid plans are billed on a recurring basis. You can cancel at any time.
+
+5. Termination
+We may suspend or terminate access if you violate these terms.
+
+6. Contact
+Questions? Email highlanderhomes22@gmail.com.
+"""
+
+    static let privacy = """
+Effective date: February 9, 2026
+
+1. Information We Collect
+We collect information you provide directly, such as account and property data.
+
+2. How We Use Information
+We use your information to provide, maintain, and improve the service.
+
+3. Sharing
+We do not sell your personal information.
+
+4. Data Security
+We take reasonable measures to protect your information.
+
+5. Contact
+Questions? Email highlanderhomes22@gmail.com.
+"""
 }

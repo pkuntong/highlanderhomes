@@ -13,10 +13,14 @@ const AuthContext = createContext(undefined);
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const hasFirebase = Boolean(auth);
 
   // Sign up function for creating new users
   const signup = async (email, password) => {
     try {
+      if (!hasFirebase) {
+        throw new Error("Auth is not configured for the web app.");
+      }
       return await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
       console.error("Error signing up:", error);
@@ -27,6 +31,9 @@ export function AuthProvider({ children }) {
   // Login function using Firebase Authentication
   const login = async (email, password) => {
     try {
+      if (!hasFirebase) {
+        throw new Error("Auth is not configured for the web app.");
+      }
       // Now using Firebase Authentication primarily
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("Firebase login successful");
@@ -45,6 +52,10 @@ export function AuthProvider({ children }) {
       
       // Also sign out of Firebase if possible
       try {
+        if (!hasFirebase) {
+          setCurrentUser(null);
+          return;
+        }
         await signOut(auth);
       } catch (error) {
         // Ignore Firebase signOut errors since we might not be using it
@@ -62,6 +73,9 @@ export function AuthProvider({ children }) {
   // Password reset function
   const resetPassword = async (email) => {
     try {
+      if (!hasFirebase) {
+        throw new Error("Auth is not configured for the web app.");
+      }
       return await sendPasswordResetEmail(auth, email);
     } catch (error) {
       console.error("Error resetting password:", error);
@@ -71,6 +85,10 @@ export function AuthProvider({ children }) {
   
   // Listen for authentication state changes using Firebase
   useEffect(() => {
+    if (!hasFirebase) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);

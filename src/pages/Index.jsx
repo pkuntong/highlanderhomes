@@ -97,6 +97,16 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      <footer className="py-10 px-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-600 dark:text-gray-300">
+          <span>© 2026 Highlander Homes LLC</span>
+          <div className="flex gap-6">
+            <Link to="/terms" className="hover:underline">Terms of Service</Link>
+            <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

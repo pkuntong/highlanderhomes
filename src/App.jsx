@@ -19,6 +19,8 @@ import Pricing from "./pages/Pricing";
 import Migration from "./pages/Migration";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -74,6 +76,8 @@ const App = () => {
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
