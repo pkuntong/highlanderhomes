@@ -389,6 +389,7 @@ struct ContractorsDirectorySheet: View {
     @EnvironmentObject var dataService: ConvexDataService
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
+    @State private var selectedContractor: ConvexContractor?
 
     private var filteredContractors: [ConvexContractor] {
         if searchText.isEmpty { return dataService.contractors }
@@ -420,7 +421,9 @@ struct ContractorsDirectorySheet: View {
                         ScrollView {
                             LazyVStack(spacing: Theme.Spacing.sm) {
                                 ForEach(filteredContractors) { contractor in
-                                    ContractorRow(contractor: contractor)
+                                    ContractorRow(contractor: contractor) {
+                                        selectedContractor = contractor
+                                    }
                                 }
                             }
                             .padding(.horizontal, Theme.Spacing.md)
@@ -438,51 +441,126 @@ struct ContractorsDirectorySheet: View {
                 }
             }
         }
+        .sheet(item: $selectedContractor) { contractor in
+            ConvexContractorDetailSheet(contractor: contractor)
+        }
     }
 }
 
 struct ContractorRow: View {
     let contractor: ConvexContractor
+    var onSelect: (() -> Void)? = nil
+
+    private var phoneURL: URL? {
+        let digits = contractor.phone.filter { $0.isNumber }
+        guard !digits.isEmpty else { return nil }
+        return URL(string: "tel://\(digits)")
+    }
+
+    private var smsURL: URL? {
+        let digits = contractor.phone.filter { $0.isNumber }
+        guard !digits.isEmpty else { return nil }
+        return URL(string: "sms://\(digits)")
+    }
+
+    private var emailURL: URL? {
+        guard !contractor.email.isEmpty else { return nil }
+        return URL(string: "mailto:\(contractor.email)")
+    }
+
+    private var websiteURL: URL? {
+        guard let website = contractor.website?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !website.isEmpty else { return nil }
+        if website.lowercased().hasPrefix("http") {
+            return URL(string: website)
+        }
+        return URL(string: "https://\(website)")
+    }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.infoBlue.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: "wrench.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(Theme.Colors.infoBlue)
+        VStack(spacing: Theme.Spacing.xs) {
+            HStack(spacing: Theme.Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(Theme.Colors.infoBlue.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "wrench.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(Theme.Colors.infoBlue)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(contractor.companyName)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(Theme.Colors.textPrimary)
+                        if contractor.isPreferred {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(Theme.Colors.gold)
+                        }
+                    }
+                    Text(contractor.specialtyDisplay)
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.Colors.textSecondary)
+                }
+
+                Spacer()
+
+                if let rate = contractor.hourlyRate {
+                    Text("$\(Int(rate))/hr")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(Theme.Colors.emerald)
+                }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(contractor.companyName)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(Theme.Colors.textPrimary)
-                    if contractor.isPreferred {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(Theme.Colors.gold)
+            HStack(spacing: Theme.Spacing.sm) {
+                if let phoneURL {
+                    Link(destination: phoneURL) {
+                        Image(systemName: "phone.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Theme.Colors.emerald)
                     }
                 }
-                Text(contractor.specialtyDisplay)
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.Colors.textSecondary)
-            }
+                if let smsURL {
+                    Link(destination: smsURL) {
+                        Image(systemName: "message.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Theme.Colors.infoBlue)
+                    }
+                }
+                if let emailURL {
+                    Link(destination: emailURL) {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Theme.Colors.warningAmber)
+                    }
+                }
+                if let websiteURL {
+                    Link(destination: websiteURL) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 14))
+                            .foregroundColor(Theme.Colors.slate400)
+                    }
+                }
 
-            Spacer()
+                Spacer()
 
-            if let rate = contractor.hourlyRate {
-                Text("$\(Int(rate))/hr")
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(Theme.Colors.emerald)
+                if onSelect != nil {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Theme.Colors.textMuted)
+                }
             }
         }
         .padding(Theme.Spacing.sm)
         .background {
             RoundedRectangle(cornerRadius: Theme.Radius.medium)
                 .fill(Theme.Colors.slate800.opacity(0.5))
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect?()
         }
     }
 }

@@ -4,6 +4,11 @@ struct PropertyDetailView: View {
     let property: ConvexProperty
     @EnvironmentObject var dataService: ConvexDataService
 
+    @State private var showingAddInsurance = false
+    @State private var showingAddLicense = false
+    @State private var selectedPolicy: ConvexInsurancePolicy?
+    @State private var selectedLicense: ConvexRentalLicense?
+
     private var tenants: [ConvexTenant] {
         dataService.tenants.filter { $0.propertyId == property.id }
     }
@@ -29,11 +34,23 @@ struct PropertyDetailView: View {
     }
 
     private var insurancePolicies: [ConvexInsurancePolicy] {
-        dataService.insurancePolicies.filter { $0.propertyId == property.id }
+        let label = normalizeLabel(property.displayAddress)
+        return dataService.insurancePolicies.filter { policy in
+            if let propertyId = policy.propertyId {
+                return propertyId == property.id
+            }
+            return normalizeLabel(policy.propertyLabel) == label
+        }
     }
 
     private var rentalLicenses: [ConvexRentalLicense] {
-        dataService.rentalLicenses.filter { $0.propertyId == property.id }
+        let label = normalizeLabel(property.displayAddress)
+        return dataService.rentalLicenses.filter { license in
+            if let propertyId = license.propertyId {
+                return propertyId == property.id
+            }
+            return normalizeLabel(license.propertyLabel) == label
+        }
     }
 
     private var monthlyIncome: Double {
@@ -98,7 +115,11 @@ struct PropertyDetailView: View {
                     // Documents Section (Insurance + Licenses)
                     PropertyDocumentsSection(
                         insurancePolicies: insurancePolicies,
-                        rentalLicenses: rentalLicenses
+                        rentalLicenses: rentalLicenses,
+                        onAddInsurance: { showingAddInsurance = true },
+                        onAddLicense: { showingAddLicense = true },
+                        onSelectPolicy: { selectedPolicy = $0 },
+                        onSelectLicense: { selectedLicense = $0 }
                     )
                 }
                 .padding(Theme.Spacing.md)
@@ -110,6 +131,22 @@ struct PropertyDetailView: View {
         .refreshable {
             await dataService.loadAllData()
         }
+        .sheet(isPresented: $showingAddInsurance) {
+            AddEntitySheet(selectedTab: .insurance, prefillProperty: property)
+        }
+        .sheet(isPresented: $showingAddLicense) {
+            AddEntitySheet(selectedTab: .licenses, prefillProperty: property)
+        }
+        .sheet(item: $selectedPolicy) { policy in
+            ConvexInsurancePolicyDetailSheet(policy: policy)
+        }
+        .sheet(item: $selectedLicense) { license in
+            ConvexRentalLicenseDetailSheet(license: license)
+        }
+    }
+
+    private func normalizeLabel(_ value: String) -> String {
+        value.lowercased().replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
     }
 }
 
@@ -455,6 +492,10 @@ struct FinancialRow: View {
 struct PropertyDocumentsSection: View {
     let insurancePolicies: [ConvexInsurancePolicy]
     let rentalLicenses: [ConvexRentalLicense]
+    let onAddInsurance: () -> Void
+    let onAddLicense: () -> Void
+    let onSelectPolicy: (ConvexInsurancePolicy) -> Void
+    let onSelectLicense: (ConvexRentalLicense) -> Void
 
     private var totalDocs: Int { insurancePolicies.count + rentalLicenses.count }
 
@@ -464,6 +505,27 @@ struct PropertyDocumentsSection: View {
             count: totalDocs,
             icon: "folder.fill"
         ) {
+            HStack(spacing: Theme.Spacing.sm) {
+                Button("Add Insurance") { onAddInsurance() }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        Capsule().fill(Theme.Colors.infoBlue)
+                    }
+
+                Button("Add License") { onAddLicense() }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        Capsule().fill(Theme.Colors.emerald)
+                    }
+            }
+            .padding(.bottom, Theme.Spacing.sm)
+
             if insurancePolicies.isEmpty && rentalLicenses.isEmpty {
                 Text("No documents on file")
                     .font(.system(size: 14))
@@ -477,7 +539,9 @@ struct PropertyDocumentsSection: View {
                         subtitle: "Policy #\(policy.policyNumber)",
                         trailing: policy.isExpired ? "Expired" : (policy.isExpiringSoon ? "\(policy.daysUntilExpiration)d left" : policy.termDisplay),
                         color: policy.isExpired ? Theme.Colors.alertRed : (policy.isExpiringSoon ? Theme.Colors.warningAmber : Theme.Colors.infoBlue)
-                    )
+                    ) {
+                        onSelectPolicy(policy)
+                    }
                 }
 
                 ForEach(rentalLicenses) { license in
@@ -487,7 +551,9 @@ struct PropertyDocumentsSection: View {
                         subtitle: "#\(license.licenseNumber)",
                         trailing: license.isExpired ? "Expired" : (license.isExpiringSoon ? "\(license.daysUntilExpiration)d left" : license.termDisplay),
                         color: license.isExpired ? Theme.Colors.alertRed : (license.isExpiringSoon ? Theme.Colors.warningAmber : Theme.Colors.emerald)
-                    )
+                    ) {
+                        onSelectLicense(license)
+                    }
                 }
             }
         }
@@ -500,30 +566,36 @@ struct DocumentRow: View {
     let subtitle: String
     let trailing: String
     let color: Color
+    var onSelect: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(color)
-                .frame(width: 24)
+        Button {
+            onSelect?()
+        } label: {
+            HStack(spacing: Theme.Spacing.sm) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundColor(color)
+                    .frame(width: 24)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Theme.Colors.textPrimary)
-                Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.Colors.textSecondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Theme.Colors.textPrimary)
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.Colors.textSecondary)
+                }
+
+                Spacer()
+
+                Text(trailing)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(color)
             }
-
-            Spacer()
-
-            Text(trailing)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(color)
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
 }
 

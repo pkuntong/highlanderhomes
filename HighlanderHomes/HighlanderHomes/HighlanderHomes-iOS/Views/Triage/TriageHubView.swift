@@ -441,6 +441,7 @@ struct EmptyTriageView: View {
 struct ConvexTriageDetailView: View {
     let request: ConvexMaintenanceRequest
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService: ConvexDataService
 
     var body: some View {
         NavigationStack {
@@ -538,7 +539,11 @@ struct ConvexDetailHeaderCard: View {
 // MARK: - Convex Triage Workflow View (3-way communication hub)
 struct ConvexTriageWorkflowView: View {
     let request: ConvexMaintenanceRequest
+    @EnvironmentObject var dataService: ConvexDataService
     @State private var currentStep: Int = 0
+    @State private var showingContractorPicker = false
+    @State private var isWorking = false
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -567,10 +572,7 @@ struct ConvexTriageWorkflowView: View {
                     isCurrent: currentStep == 1,
                     actionLabel: currentStep == 1 ? "Assign Now" : nil
                 ) {
-                    HapticManager.shared.reward()
-                    withAnimation(.spring(response: 0.4)) {
-                        currentStep = 2
-                    }
+                    showingContractorPicker = true
                 }
 
                 WorkflowConnector(isCompleted: currentStep > 1)
@@ -581,8 +583,11 @@ struct ConvexTriageWorkflowView: View {
                     subtitle: "Contractor confirms appointment time",
                     icon: "calendar.badge.clock",
                     isCompleted: currentStep > 1,
-                    isCurrent: currentStep == 2
-                )
+                    isCurrent: currentStep == 2,
+                    actionLabel: currentStep == 2 ? "Mark Scheduled" : nil
+                ) {
+                    Task { await markScheduled() }
+                }
 
                 WorkflowConnector(isCompleted: currentStep > 2)
 
@@ -592,8 +597,11 @@ struct ConvexTriageWorkflowView: View {
                     subtitle: "Automatic update sent to tenant",
                     icon: "person.fill.checkmark",
                     isCompleted: currentStep > 2,
-                    isCurrent: currentStep == 3
-                )
+                    isCurrent: currentStep == 3,
+                    actionLabel: currentStep == 3 ? "Notify Tenant" : nil
+                ) {
+                    Task { await notifyTenant() }
+                }
             }
         }
         .padding(Theme.Spacing.lg)
@@ -602,12 +610,71 @@ struct ConvexTriageWorkflowView: View {
             // Set initial step based on request status
             switch request.status {
             case "new": currentStep = 1
-            case "acknowledged": currentStep = 1
-            case "scheduled": currentStep = 2
-            case "inProgress": currentStep = 3
-            default: currentStep = 4
+            case "acknowledged": currentStep = 2
+            case "scheduled": currentStep = 3
+            case "inProgress": currentStep = 4
+            case "awaitingParts": currentStep = 4
+            case "completed": currentStep = 4
+            case "cancelled": currentStep = 4
+            default: currentStep = 1
             }
         }
+        .sheet(isPresented: $showingContractorPicker) {
+            ContractorPickerSheet(
+                contractors: dataService.contractors,
+                onSelect: { contractor in
+                    Task { await assignContractor(contractor) }
+                }
+            )
+        }
+    }
+
+    private func assignContractor(_ contractor: ConvexContractor) async {
+        guard !isWorking else { return }
+        isWorking = true
+        errorMessage = nil
+        do {
+            try await dataService.assignContractor(requestId: request.id, contractorId: contractor.id)
+            await dataService.loadAllData()
+            withAnimation(.spring(response: 0.4)) {
+                currentStep = 2
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isWorking = false
+    }
+
+    private func markScheduled() async {
+        guard !isWorking else { return }
+        isWorking = true
+        errorMessage = nil
+        do {
+            try await dataService.updateMaintenanceStatus(id: request.id, status: "scheduled")
+            await dataService.loadAllData()
+            withAnimation(.spring(response: 0.4)) {
+                currentStep = 3
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isWorking = false
+    }
+
+    private func notifyTenant() async {
+        guard !isWorking else { return }
+        isWorking = true
+        errorMessage = nil
+        do {
+            try await dataService.updateMaintenanceStatus(id: request.id, status: "inProgress")
+            await dataService.loadAllData()
+            withAnimation(.spring(response: 0.4)) {
+                currentStep = 4
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isWorking = false
     }
 }
 
@@ -690,6 +757,66 @@ struct WorkflowConnector: View {
                 .frame(width: 2, height: 24)
                 .padding(.leading, 21)
             Spacer()
+        }
+    }
+}
+
+struct ContractorPickerSheet: View {
+    let contractors: [ConvexContractor]
+    let onSelect: (ConvexContractor) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+
+    private var filtered: [ConvexContractor] {
+        if searchText.isEmpty { return contractors }
+        return contractors.filter {
+            $0.companyName.localizedCaseInsensitiveContains(searchText) ||
+            $0.contactName.localizedCaseInsensitiveContains(searchText) ||
+            $0.specialtyDisplay.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.Colors.background.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    SearchBar(text: $searchText)
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.bottom, Theme.Spacing.sm)
+
+                    if filtered.isEmpty {
+                        EmptyStateView(
+                            title: "No Contractors",
+                            subtitle: "Add contractors in the Vault first.",
+                            icon: "wrench.and.screwdriver.fill"
+                        )
+                        .frame(maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: Theme.Spacing.sm) {
+                                ForEach(filtered) { contractor in
+                                    ContractorRow(contractor: contractor) {
+                                        onSelect(contractor)
+                                        dismiss()
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.bottom, 40)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Assign Contractor")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(Theme.Colors.emerald)
+                }
+            }
         }
     }
 }

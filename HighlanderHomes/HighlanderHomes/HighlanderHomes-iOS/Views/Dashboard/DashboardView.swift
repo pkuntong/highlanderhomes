@@ -59,7 +59,21 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 10) {
+                        Menu {
+                            Button("Refresh Data") {
+                                Task { await dataService.loadAllData() }
+                            }
+                            Button("Settings") {
+                                showingSettings = true
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                        }
+                        .accessibilityLabel("Dashboard menu")
+
                         Text("Dashboard")
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(Theme.Colors.textPrimary)
