@@ -17,206 +17,60 @@ struct AuthenticationView: View {
     @State private var currentNonce: String?
     @State private var showTerms = false
     @State private var showPrivacy = false
+    @State private var animateGradient = false
+    @State private var showContent = false
 
     var body: some View {
         ZStack {
-            // Background
-            Theme.Colors.background
+            // Premium Animated Gradient Background
+            AnimatedGradientBackground(animate: $animateGradient)
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: Theme.Spacing.xxl) {
-                    // Logo & Welcome
-                    VStack(spacing: Theme.Spacing.md) {
-                        // App Icon
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Theme.Gradients.emeraldGlow)
-                                .frame(width: 60, height: 60)
-                                .shadow(color: Theme.Colors.emerald.opacity(0.3), radius: 12, y: 5)
-
-                            Image("HighlanderLogo")
-                                .resizable()
-                                .scaledToFit()
-                                .padding(8)
-                        }
+            // Content
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    // Hero Section with Logo
+                    HeroSection()
+                        .opacity(showContent ? 1 : 0)
+                        .offset(y: showContent ? 0 : -30)
+                    
+                    // Auth Card
+                    AuthCardView(
+                        isSignUp: $isSignUp,
+                        email: $email,
+                        password: $password,
+                        name: $name,
+                        isLoading: $isLoading,
+                        errorMessage: $errorMessage,
+                        successMessage: $successMessage,
+                        showForgotPassword: $showForgotPassword,
+                        showVerifyEmail: $showVerifyEmail,
+                        currentNonce: $currentNonce,
+                        onSubmit: { Task { await handleEmailAuth() } },
+                        onAppleRequest: configureAppleRequest,
+                        onAppleCompletion: handleAppleSignIn
+                    )
+                    .opacity(showContent ? 1 : 0)
+                    .offset(y: showContent ? 0 : 30)
+                    
+                    // Terms Footer
+                    TermsFooter(showTerms: $showTerms, showPrivacy: $showPrivacy)
+                        .opacity(showContent ? 1 : 0)
                         .padding(.top, Theme.Spacing.xl)
-
-                        Text("Highlander Homes")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(Theme.Colors.textPrimary)
-
-                        Text("Property management, reimagined")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Theme.Colors.textSecondary)
-                    }
-
-                    // Auth Form
-                    VStack(spacing: Theme.Spacing.lg) {
-                        // Tab Selector
-                        AuthTabSelector(isSignUp: $isSignUp)
-
-                        // Form Fields
-                        VStack(spacing: Theme.Spacing.md) {
-                            if isSignUp {
-                                AuthTextField(
-                                    icon: "person.fill",
-                                    placeholder: "Full Name",
-                                    text: $name,
-                                    isSecure: false
-                                )
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                            }
-
-                            AuthTextField(
-                                icon: "envelope.fill",
-                                placeholder: "Email",
-                                text: $email,
-                                isSecure: false,
-                                keyboardType: .emailAddress
-                            )
-
-                            AuthTextField(
-                                icon: "lock.fill",
-                                placeholder: "Password",
-                                text: $password,
-                                isSecure: true
-                            )
-
-                            if !isSignUp {
-                                HStack {
-                                    Spacer()
-                                    Button("Forgot Password?") {
-                                        showForgotPassword = true
-                                    }
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(Theme.Colors.emerald)
-                                }
-                            }
-                        }
-
-                        // Error Message
-                        if let error = errorMessage {
-                            HStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(Theme.Colors.alertRed)
-                                Text(error)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Theme.Colors.alertRed)
-                            }
-                            .padding(Theme.Spacing.sm)
-                            .frame(maxWidth: .infinity)
-                            .background {
-                                RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                    .fill(Theme.Colors.alertRed.opacity(0.1))
-                            }
-                        }
-
-                        if let success = successMessage {
-                            HStack(spacing: 8) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(Theme.Colors.emerald)
-                                Text(success)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Theme.Colors.emerald)
-                            }
-                            .padding(Theme.Spacing.sm)
-                            .frame(maxWidth: .infinity)
-                            .background {
-                                RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                    .fill(Theme.Colors.emerald.opacity(0.1))
-                            }
-                        }
-
-                        // Submit Button
-                        Button {
-                            Task { await handleEmailAuth() }
-                        } label: {
-                            HStack {
-                                if isLoading {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                } else {
-                                    Text(isSignUp ? "Create Account" : "Sign In")
-                                        .font(.system(size: 17, weight: .semibold))
-                                }
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background {
-                                RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                    .fill(Theme.Gradients.emeraldGlow)
-                            }
-                            .shadow(color: Theme.Colors.emerald.opacity(0.4), radius: 12, y: 4)
-                        }
-                        .disabled(isLoading || !isFormValid)
-                        .opacity(isFormValid ? 1 : 0.6)
-
-                        // Verify Email (if needed)
-                        Button("Verify Email") {
-                            showVerifyEmail = true
-                        }
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(Theme.Colors.emerald)
-
-                        // Divider
-                        HStack(spacing: Theme.Spacing.md) {
-                            Rectangle()
-                                .fill(Theme.Colors.slate700)
-                                .frame(height: 1)
-                            Text("or")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(Theme.Colors.textMuted)
-                            Rectangle()
-                                .fill(Theme.Colors.slate700)
-                                .frame(height: 1)
-                        }
-
-                        // Apple Sign In
-                        #if targetEnvironment(simulator)
-                        Text("Sign in with Apple is unavailable on Simulator. Use email sign in.")
-                            .font(.system(size: 12))
-                            .foregroundColor(Theme.Colors.textMuted)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                        #else
-                        SignInWithAppleButton(
-                            onRequest: configureAppleRequest,
-                            onCompletion: handleAppleSignIn
-                        )
-                        .signInWithAppleButtonStyle(.white)
-                        .frame(height: 54)
-                        .cornerRadius(Theme.Radius.medium)
-                        #endif
-                    }
-                    .padding(.horizontal, Theme.Spacing.lg)
-
-                    // Terms
-                    VStack(spacing: 8) {
-                        Text("By continuing, you agree to our")
-                            .font(.system(size: 12))
-                            .foregroundColor(Theme.Colors.textMuted)
-
-                        HStack(spacing: 4) {
-                            Button("Terms of Service") { showTerms = true }
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Theme.Colors.emerald)
-
-                            Text("and")
-                                .font(.system(size: 12))
-                                .foregroundColor(Theme.Colors.textMuted)
-
-                            Button("Privacy Policy") { showPrivacy = true }
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Theme.Colors.emerald)
-                        }
-                    }
-                    .padding(.bottom, Theme.Spacing.xl)
+                        .padding(.bottom, Theme.Spacing.xxl)
                 }
+                .padding(.horizontal, Theme.Spacing.lg)
             }
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isSignUp)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.8)) {
+                animateGradient = true
+            }
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.8).delay(0.3)) {
+                showContent = true
+            }
+        }
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isSignUp)
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordSheet(email: $email)
         }
@@ -361,58 +215,436 @@ struct AuthenticationView: View {
     }
 }
 
-// MARK: - Auth Tab Selector
-struct AuthTabSelector: View {
-    @Binding var isSignUp: Bool
-    @Namespace private var animation
-
+// MARK: - Animated Gradient Background
+struct AnimatedGradientBackground: View {
+    @Binding var animate: Bool
+    
     var body: some View {
-        HStack(spacing: 0) {
-            TabButton(title: "Sign In", isSelected: !isSignUp, namespace: animation) {
-                isSignUp = false
+        ZStack {
+            // Base gradient
+            LinearGradient(
+                colors: [
+                    Color(hex: "0A0F1C"),
+                    Color(hex: "0D1525"),
+                    Color(hex: "111B2E")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            
+            // Floating orbs
+            GeometryReader { geo in
+                // Top-left blue orb
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(hex: "3B82F6").opacity(0.4),
+                                Color(hex: "3B82F6").opacity(0.1),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 150
+                        )
+                    )
+                    .frame(width: 300, height: 300)
+                    .offset(
+                        x: animate ? -50 : -80,
+                        y: animate ? -30 : -60
+                    )
+                    .blur(radius: 60)
+                
+                // Top-right emerald orb
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Theme.Colors.emerald.opacity(0.35),
+                                Theme.Colors.emerald.opacity(0.1),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 120
+                        )
+                    )
+                    .frame(width: 250, height: 250)
+                    .offset(
+                        x: geo.size.width - 120,
+                        y: animate ? 80 : 50
+                    )
+                    .blur(radius: 50)
+                
+                // Bottom center purple orb
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color(hex: "8B5CF6").opacity(0.3),
+                                Color(hex: "8B5CF6").opacity(0.05),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 180
+                        )
+                    )
+                    .frame(width: 350, height: 350)
+                    .offset(
+                        x: geo.size.width / 2 - 175,
+                        y: geo.size.height - (animate ? 200 : 250)
+                    )
+                    .blur(radius: 70)
+                    .animation(
+                        .easeInOut(duration: 4).repeatForever(autoreverses: true),
+                        value: animate
+                    )
             }
-
-            TabButton(title: "Sign Up", isSelected: isSignUp, namespace: animation) {
-                isSignUp = true
+            
+            // Subtle grid pattern
+            GeometryReader { geo in
+                Path { path in
+                    let gridSize: CGFloat = 40
+                    for x in stride(from: 0, to: geo.size.width, by: gridSize) {
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: geo.size.height))
+                    }
+                    for y in stride(from: 0, to: geo.size.height, by: gridSize) {
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                    }
+                }
+                .stroke(Color.white.opacity(0.02), lineWidth: 0.5)
             }
-        }
-        .padding(4)
-        .background {
-            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                .fill(Theme.Colors.slate800)
         }
     }
 }
 
-struct TabButton: View {
+// MARK: - Hero Section
+struct HeroSection: View {
+    @State private var logoScale: CGFloat = 0.8
+    @State private var logoOpacity: CGFloat = 0
+    
+    var body: some View {
+        VStack(spacing: Theme.Spacing.md) {
+            // Premium Logo Container
+            ZStack {
+                // Glow effect
+                Circle()
+                    .fill(Theme.Colors.emerald.opacity(0.2))
+                    .frame(width: 100, height: 100)
+                    .blur(radius: 30)
+                
+                // Logo background
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: "1E293B"),
+                                Color(hex: "0F172A")
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Theme.Colors.emerald.opacity(0.5),
+                                        Color.white.opacity(0.1)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    }
+                    .shadow(color: Theme.Colors.emerald.opacity(0.3), radius: 20, y: 8)
+
+                Image("HighlanderLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50, height: 50)
+            }
+            .scaleEffect(logoScale)
+            .opacity(logoOpacity)
+            .onAppear {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                    logoScale = 1.0
+                    logoOpacity = 1.0
+                }
+            }
+            .padding(.top, Theme.Spacing.xxl)
+
+            // Brand Name with gradient
+            VStack(spacing: 6) {
+                Text("Highlander Homes")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.white, Color(hex: "CBD5E1")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+
+                Text("Property management, reimagined")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Theme.Colors.emeraldLight, Theme.Colors.emerald],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+            }
+        }
+        .padding(.bottom, Theme.Spacing.xl)
+    }
+}
+
+// MARK: - Auth Card View
+struct AuthCardView: View {
+    @Binding var isSignUp: Bool
+    @Binding var email: String
+    @Binding var password: String
+    @Binding var name: String
+    @Binding var isLoading: Bool
+    @Binding var errorMessage: String?
+    @Binding var successMessage: String?
+    @Binding var showForgotPassword: Bool
+    @Binding var showVerifyEmail: Bool
+    @Binding var currentNonce: String?
+    
+    let onSubmit: () -> Void
+    let onAppleRequest: (ASAuthorizationAppleIDRequest) -> Void
+    let onAppleCompletion: (Result<ASAuthorization, Error>) -> Void
+    
+    private var isFormValid: Bool {
+        let emailValid = email.contains("@") && email.contains(".")
+        let passwordValid = password.count >= 8 &&
+            password.rangeOfCharacter(from: .letters) != nil &&
+            password.rangeOfCharacter(from: .decimalDigits) != nil
+        
+        if isSignUp {
+            return emailValid && passwordValid && !name.isEmpty
+        }
+        return emailValid && passwordValid
+    }
+    
+    var body: some View {
+        VStack(spacing: Theme.Spacing.lg) {
+            // Premium Tab Selector
+            PremiumTabSelector(isSignUp: $isSignUp)
+            
+            // Form Fields
+            VStack(spacing: Theme.Spacing.md) {
+                if isSignUp {
+                    PremiumTextField(
+                        icon: "person.fill",
+                        placeholder: "Full Name",
+                        text: $name,
+                        isSecure: false
+                    )
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+                }
+
+                PremiumTextField(
+                    icon: "envelope.fill",
+                    placeholder: "Email Address",
+                    text: $email,
+                    isSecure: false,
+                    keyboardType: .emailAddress
+                )
+
+                PremiumTextField(
+                    icon: "lock.fill",
+                    placeholder: "Password",
+                    text: $password,
+                    isSecure: true
+                )
+
+                if !isSignUp {
+                    HStack {
+                        Spacer()
+                        Button {
+                            HapticManager.shared.selection()
+                            showForgotPassword = true
+                        } label: {
+                            Text("Forgot Password?")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [Theme.Colors.emeraldLight, Theme.Colors.emerald],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                        }
+                    }
+                    .padding(.top, -Theme.Spacing.xs)
+                }
+            }
+
+            // Error/Success Messages
+            if let error = errorMessage {
+                MessageBanner(message: error, type: .error)
+            }
+
+            if let success = successMessage {
+                MessageBanner(message: success, type: .success)
+            }
+
+            // Submit Button
+            PremiumButton(
+                title: isSignUp ? "Create Account" : "Sign In",
+                isLoading: isLoading,
+                isEnabled: isFormValid
+            ) {
+                onSubmit()
+            }
+            
+            // Verify Email Link
+            Button {
+                HapticManager.shared.selection()
+                showVerifyEmail = true
+            } label: {
+                Text("Already have a verification code?")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Theme.Colors.textMuted)
+            }
+
+            // Divider
+            PremiumDivider()
+
+            // Apple Sign In
+            #if targetEnvironment(simulator)
+            Text("Sign in with Apple is unavailable on Simulator")
+                .font(.system(size: 12))
+                .foregroundColor(Theme.Colors.textMuted)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            #else
+            SignInWithAppleButton(
+                onRequest: onAppleRequest,
+                onCompletion: onAppleCompletion
+            )
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 56)
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
+            #endif
+        }
+        .padding(Theme.Spacing.lg)
+        .background {
+            // Glass morphism card
+            RoundedRectangle(cornerRadius: 28)
+                .fill(.ultraThinMaterial.opacity(0.8))
+                .background {
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(hex: "1E293B").opacity(0.9),
+                                    Color(hex: "0F172A").opacity(0.95)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 28)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.15),
+                                    Color.white.opacity(0.05),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                }
+                .shadow(color: .black.opacity(0.3), radius: 30, y: 15)
+        }
+    }
+}
+
+// MARK: - Premium Tab Selector
+struct PremiumTabSelector: View {
+    @Binding var isSignUp: Bool
+    @Namespace private var animation
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            PremiumTabButton(
+                title: "Sign In",
+                isSelected: !isSignUp,
+                namespace: animation
+            ) {
+                isSignUp = false
+            }
+
+            PremiumTabButton(
+                title: "Sign Up",
+                isSelected: isSignUp,
+                namespace: animation
+            ) {
+                isSignUp = true
+            }
+        }
+        .padding(5)
+        .background {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(hex: "0F172A").opacity(0.8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Theme.Colors.slate700.opacity(0.5), lineWidth: 1)
+                }
+        }
+    }
+}
+
+struct PremiumTabButton: View {
     let title: String
     let isSelected: Bool
     let namespace: Namespace.ID
     let action: () -> Void
 
     var body: some View {
-        Button(action: {
+        Button {
             HapticManager.shared.selection()
             action()
-        }) {
+        } label: {
             Text(title)
-                .font(.system(size: 15, weight: isSelected ? .semibold : .medium))
-                .foregroundColor(isSelected ? .white : Theme.Colors.textSecondary)
+                .font(.system(size: 16, weight: isSelected ? .bold : .medium))
+                .foregroundColor(isSelected ? .white : Theme.Colors.textMuted)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .padding(.vertical, 14)
                 .background {
                     if isSelected {
-                        RoundedRectangle(cornerRadius: Theme.Radius.small)
-                            .fill(Theme.Colors.emerald)
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Theme.Gradients.emeraldGlow)
                             .matchedGeometryEffect(id: "authTab", in: namespace)
+                            .shadow(color: Theme.Colors.emerald.opacity(0.4), radius: 8, y: 2)
                     }
                 }
         }
     }
 }
 
-// MARK: - Auth Text Field
-struct AuthTextField: View {
+// MARK: - Premium Text Field
+struct PremiumTextField: View {
     let icon: String
     let placeholder: String
     @Binding var text: String
@@ -423,11 +655,21 @@ struct AuthTextField: View {
     @State private var showPassword = false
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(isFocused ? Theme.Colors.emerald : Theme.Colors.textMuted)
-                .frame(width: 24)
+        HStack(spacing: 14) {
+            // Icon with glow effect when focused
+            ZStack {
+                if isFocused {
+                    Circle()
+                        .fill(Theme.Colors.emerald.opacity(0.2))
+                        .frame(width: 36, height: 36)
+                        .blur(radius: 8)
+                }
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(isFocused ? Theme.Colors.emerald : Theme.Colors.textMuted)
+                    .frame(width: 24)
+            }
 
             if isSecure && !showPassword {
                 SecureField(placeholder, text: $text)
@@ -442,25 +684,229 @@ struct AuthTextField: View {
 
             if isSecure {
                 Button {
+                    HapticManager.shared.selection()
                     showPassword.toggle()
                 } label: {
                     Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 18))
                         .foregroundColor(Theme.Colors.textMuted)
                 }
             }
         }
-        .font(.system(size: 16))
+        .font(.system(size: 17))
         .foregroundColor(Theme.Colors.textPrimary)
-        .padding(.horizontal, 16)
-        .frame(height: 54)
+        .padding(.horizontal, 18)
+        .frame(height: 60)
         .background {
-            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                .fill(Theme.Colors.slate800)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(hex: "0F172A").opacity(0.7))
                 .overlay {
-                    RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                        .stroke(isFocused ? Theme.Colors.emerald : Theme.Colors.slate700, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(
+                            isFocused ?
+                                AnyShapeStyle(Theme.Gradients.emeraldGlow) :
+                                AnyShapeStyle(Theme.Colors.slate700.opacity(0.6)),
+                            lineWidth: isFocused ? 2 : 1
+                        )
                 }
+                .shadow(color: isFocused ? Theme.Colors.emerald.opacity(0.2) : .clear, radius: 12, y: 4)
+        }
+        .animation(.easeOut(duration: 0.2), value: isFocused)
+    }
+}
+
+// MARK: - Premium Button
+struct PremiumButton: View {
+    let title: String
+    let isLoading: Bool
+    let isEnabled: Bool
+    let action: () -> Void
+    
+    @State private var isPressed = false
+    
+    var body: some View {
+        Button {
+            HapticManager.shared.impact(.medium)
+            action()
+        } label: {
+            HStack(spacing: 10) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(0.9)
+                } else {
+                    Text(title)
+                        .font(.system(size: 18, weight: .bold))
+                    
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 16, weight: .bold))
+                        .offset(x: isPressed ? 4 : 0)
+                }
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 60)
+            .background {
+                ZStack {
+                    // Gradient background
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Theme.Gradients.emeraldGlow)
+                    
+                    // Shine effect
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.2),
+                                    Color.clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .center
+                            )
+                        )
+                }
+            }
+            .shadow(color: Theme.Colors.emerald.opacity(isEnabled ? 0.5 : 0.2), radius: 15, y: 6)
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+        }
+        .disabled(isLoading || !isEnabled)
+        .opacity(isEnabled ? 1 : 0.6)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        .pressEvents {
+            isPressed = true
+        } onRelease: {
+            isPressed = false
+        }
+    }
+}
+
+// MARK: - Press Events Modifier
+struct PressEventsModifier: ViewModifier {
+    let onPress: () -> Void
+    let onRelease: () -> Void
+    
+    func body(content: Content) -> some View {
+        content
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in onPress() }
+                    .onEnded { _ in onRelease() }
+            )
+    }
+}
+
+extension View {
+    func pressEvents(onPress: @escaping () -> Void, onRelease: @escaping () -> Void) -> some View {
+        modifier(PressEventsModifier(onPress: onPress, onRelease: onRelease))
+    }
+}
+
+// MARK: - Premium Divider
+struct PremiumDivider: View {
+    var body: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.clear, Theme.Colors.slate600],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+            
+            Text("or continue with")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Theme.Colors.textMuted)
+            
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Theme.Colors.slate600, Color.clear],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 1)
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+    }
+}
+
+// MARK: - Message Banner
+struct MessageBanner: View {
+    let message: String
+    let type: MessageType
+    
+    enum MessageType {
+        case error, success
+        
+        var color: Color {
+            switch self {
+            case .error: return Theme.Colors.alertRed
+            case .success: return Theme.Colors.emerald
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .error: return "exclamationmark.triangle.fill"
+            case .success: return "checkmark.circle.fill"
+            }
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: type.icon)
+                .font(.system(size: 16))
+            Text(message)
+                .font(.system(size: 14, weight: .medium))
+        }
+        .foregroundColor(type.color)
+        .padding(Theme.Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(type.color.opacity(0.12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(type.color.opacity(0.3), lineWidth: 1)
+                }
+        }
+    }
+}
+
+// MARK: - Terms Footer
+struct TermsFooter: View {
+    @Binding var showTerms: Bool
+    @Binding var showPrivacy: Bool
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("By continuing, you agree to our")
+                .font(.system(size: 13))
+                .foregroundColor(Theme.Colors.textMuted)
+
+            HStack(spacing: 4) {
+                Button("Terms of Service") {
+                    HapticManager.shared.selection()
+                    showTerms = true
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Theme.Colors.emerald)
+
+                Text("and")
+                    .font(.system(size: 13))
+                    .foregroundColor(Theme.Colors.textMuted)
+
+                Button("Privacy Policy") {
+                    HapticManager.shared.selection()
+                    showPrivacy = true
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Theme.Colors.emerald)
+            }
         }
     }
 }
@@ -480,24 +926,33 @@ struct ForgotPasswordSheet: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: Theme.Spacing.lg) {
-                    Image(systemName: "envelope.badge.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(Theme.Gradients.emeraldGlow)
-                        .padding(.top, Theme.Spacing.xl)
+                    // Icon with glow
+                    ZStack {
+                        Circle()
+                            .fill(Theme.Colors.emerald.opacity(0.2))
+                            .frame(width: 100, height: 100)
+                            .blur(radius: 30)
+                        
+                        Image(systemName: "envelope.badge.fill")
+                            .font(.system(size: 56))
+                            .foregroundStyle(Theme.Gradients.emeraldGlow)
+                    }
+                    .padding(.top, Theme.Spacing.xl)
 
-                    Text("Reset Password")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(Theme.Colors.textPrimary)
+                    VStack(spacing: 8) {
+                        Text("Reset Password")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.Colors.textPrimary)
 
-                    Text("Enter your email and we'll send you a link to reset your password")
-                        .font(.system(size: 14))
-                        .foregroundColor(Theme.Colors.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                        Text("Enter your email and we'll send you\na link to reset your password")
+                            .font(.system(size: 15))
+                            .foregroundColor(Theme.Colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
 
-                    AuthTextField(
+                    PremiumTextField(
                         icon: "envelope.fill",
-                        placeholder: "Email",
+                        placeholder: "Email Address",
                         text: $email,
                         isSecure: false,
                         keyboardType: .emailAddress
@@ -505,57 +960,23 @@ struct ForgotPasswordSheet: View {
                     .padding(.horizontal, Theme.Spacing.lg)
 
                     if let success = successMessage {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text(success)
-                        }
-                        .font(.system(size: 14))
-                        .foregroundColor(Theme.Colors.emerald)
-                        .padding()
-                        .background {
-                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                .fill(Theme.Colors.emerald.opacity(0.1))
-                        }
-                        .padding(.horizontal)
+                        MessageBanner(message: success, type: .success)
+                            .padding(.horizontal)
                     }
 
                     if let error = errorMessage {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                            Text(error)
-                        }
-                        .font(.system(size: 14))
-                        .foregroundColor(Theme.Colors.alertRed)
-                        .padding()
-                        .background {
-                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                .fill(Theme.Colors.alertRed.opacity(0.1))
-                        }
-                        .padding(.horizontal)
+                        MessageBanner(message: error, type: .error)
+                            .padding(.horizontal)
                     }
 
-                    Button {
+                    PremiumButton(
+                        title: "Send Reset Link",
+                        isLoading: isLoading,
+                        isEnabled: !email.isEmpty
+                    ) {
                         Task { await resetPassword() }
-                    } label: {
-                        HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Send Reset Link")
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background {
-                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                .fill(Theme.Gradients.emeraldGlow)
-                        }
                     }
                     .padding(.horizontal, Theme.Spacing.lg)
-                    .disabled(email.isEmpty || isLoading)
 
                     Spacer()
                 }
@@ -564,6 +985,7 @@ struct ForgotPasswordSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(Theme.Colors.emerald)
                 }
             }
@@ -604,35 +1026,59 @@ struct VerifyEmailFromAuthSheet: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: Theme.Spacing.lg) {
-                    Text("Enter the 6‑digit code sent to:")
-                        .font(.system(size: 14))
-                        .foregroundColor(Theme.Colors.textSecondary)
+                    // Icon with glow
+                    ZStack {
+                        Circle()
+                            .fill(Theme.Colors.emerald.opacity(0.2))
+                            .frame(width: 100, height: 100)
+                            .blur(radius: 30)
+                        
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 56))
+                            .foregroundStyle(Theme.Gradients.emeraldGlow)
+                    }
+                    .padding(.top, Theme.Spacing.lg)
+                    
+                    VStack(spacing: 8) {
+                        Text("Verify Email")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(Theme.Colors.textPrimary)
 
-                    AuthTextField(
-                        icon: "envelope.fill",
-                        placeholder: "Email",
-                        text: $email,
-                        isSecure: false,
-                        keyboardType: .emailAddress
-                    )
-                    .padding(.horizontal, Theme.Spacing.lg)
+                        Text("Enter the 6-digit code sent to your email")
+                            .font(.system(size: 15))
+                            .foregroundColor(Theme.Colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
 
-                    AuthTextField(
-                        icon: "key.fill",
-                        placeholder: "Verification Code",
-                        text: $code,
-                        isSecure: false,
-                        keyboardType: .numberPad
-                    )
+                    VStack(spacing: Theme.Spacing.md) {
+                        PremiumTextField(
+                            icon: "envelope.fill",
+                            placeholder: "Email Address",
+                            text: $email,
+                            isSecure: false,
+                            keyboardType: .emailAddress
+                        )
+
+                        PremiumTextField(
+                            icon: "key.fill",
+                            placeholder: "Verification Code",
+                            text: $code,
+                            isSecure: false,
+                            keyboardType: .numberPad
+                        )
+                    }
                     .padding(.horizontal, Theme.Spacing.lg)
 
                     if let error = errorMessage {
-                        Text(error)
-                            .font(.system(size: 12))
-                            .foregroundColor(Theme.Colors.alertRed)
+                        MessageBanner(message: error, type: error.contains("sent") ? .success : .error)
+                            .padding(.horizontal)
                     }
 
-                    Button {
+                    PremiumButton(
+                        title: "Verify Email",
+                        isLoading: isLoading,
+                        isEnabled: !email.isEmpty && !code.isEmpty
+                    ) {
                         Task {
                             isLoading = true
                             errorMessage = nil
@@ -646,44 +1092,35 @@ struct VerifyEmailFromAuthSheet: View {
                             }
                             isLoading = false
                         }
-                    } label: {
-                        HStack {
-                            if isLoading {
-                                ProgressView().tint(.white)
-                            } else {
-                                Text("Verify Email")
-                            }
-                        }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background {
-                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
-                                .fill(Theme.Gradients.emeraldGlow)
-                        }
                     }
-                    .disabled(email.isEmpty || code.isEmpty || isLoading)
-                    .opacity((email.isEmpty || code.isEmpty) ? 0.6 : 1)
+                    .padding(.horizontal, Theme.Spacing.lg)
 
-                    Button("Resend Code") {
+                    Button {
                         Task {
                             do {
                                 try await convexAuth.sendVerificationEmail(email: email)
-                                errorMessage = "Verification code sent."
+                                errorMessage = "Verification code sent!"
                                 HapticManager.shared.success()
                             } catch {
                                 errorMessage = error.localizedDescription
                                 HapticManager.shared.error()
                             }
                         }
+                    } label: {
+                        Text("Resend Code")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Theme.Colors.emeraldLight, Theme.Colors.emerald],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
                     }
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Theme.Colors.emerald)
+                    
+                    Spacer()
                 }
-                .padding(.vertical, Theme.Spacing.xl)
             }
-            .navigationTitle("Verify Email")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -708,7 +1145,7 @@ struct LegalDocumentSheet: View {
         NavigationStack {
             ScrollView {
                 Text(bodyText)
-                    .font(.system(size: 14))
+                    .font(.system(size: 15))
                     .foregroundColor(Theme.Colors.textPrimary)
                     .padding(Theme.Spacing.lg)
             }
@@ -718,6 +1155,7 @@ struct LegalDocumentSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(Theme.Colors.emerald)
                 }
             }
