@@ -20,6 +20,7 @@ import type * as migrations from "../migrations.js";
 import type * as properties from "../properties.js";
 import type * as rentPayments from "../rentPayments.js";
 import type * as rentalLicenses from "../rentalLicenses.js";
+import type * as screenshots from "../screenshots.js";
 import type * as tenants from "../tenants.js";
 import type * as users from "../users.js";
 
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   properties: typeof properties;
   rentPayments: typeof rentPayments;
   rentalLicenses: typeof rentalLicenses;
+  screenshots: typeof screenshots;
   tenants: typeof tenants;
   users: typeof users;
 }>;

@@ -11,6 +11,8 @@ struct PricingView: View {
 
     private let freeLimit = 3
     private let ownerEmail = "highlanderhomes22@gmail.com"
+    private let termsURL = URL(string: "https://www.highlanderhomes.org/terms")!
+    private let privacyURL = URL(string: "https://www.highlanderhomes.org/privacy")!
 
     private var isOwner: Bool {
         convexAuth.currentUser?.email.lowercased() == ownerEmail
@@ -93,6 +95,22 @@ struct PricingView: View {
                                 }
                                 .buttonStyle(SecondaryButtonStyle())
                                 .disabled(isProcessing)
+                            }
+
+                            VStack(spacing: 8) {
+                                Text("Payment will be charged to your Apple ID account. Subscription renews automatically unless canceled at least 24 hours before the end of the current period.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Theme.Colors.textMuted)
+                                    .multilineTextAlignment(.center)
+
+                                HStack(spacing: 10) {
+                                    Link("Terms", destination: termsURL)
+                                    Text("•")
+                                        .foregroundColor(Theme.Colors.textMuted)
+                                    Link("Privacy", destination: privacyURL)
+                                }
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Theme.Colors.emerald)
                             }
 
                             Button("Close") { dismiss() }

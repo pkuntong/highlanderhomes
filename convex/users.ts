@@ -130,6 +130,8 @@ export const deleteAccount = mutation({
     await deleteByUser("contractors");
     await deleteByUser("rentPayments");
     await deleteByUser("expenses");
+    await deleteByUser("insurancePolicies");
+    await deleteByUser("rentalLicenses");
     await deleteByUser("feedEvents");
 
     await ctx.db.delete(userId);
