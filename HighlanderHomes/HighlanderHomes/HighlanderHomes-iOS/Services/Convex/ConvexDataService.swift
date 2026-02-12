@@ -220,6 +220,13 @@ class ConvexDataService: ObservableObject {
         ) { [weak self] (licenses: [ConvexRentalLicense]) in
             self?.rentalLicenses = licenses
         }
+
+        client.subscribe(
+            to: ConvexConfig.Functions.getMarketTrends,
+            args: ["userId": userId]
+        ) { [weak self] (trends: [ConvexMarketTrend]) in
+            self?.marketTrends = trends
+        }
     }
 
     func unsubscribeFromUpdates() {
@@ -230,6 +237,7 @@ class ConvexDataService: ObservableObject {
         client.unsubscribe(from: ConvexConfig.Functions.getExpenses)
         client.unsubscribe(from: ConvexConfig.Functions.getInsurancePolicies)
         client.unsubscribe(from: ConvexConfig.Functions.getRentalLicenses)
+        client.unsubscribe(from: ConvexConfig.Functions.getMarketTrends)
     }
 
     // MARK: - User ID Helper
@@ -337,6 +345,35 @@ class ConvexDataService: ObservableObject {
             // Trigger celebration
             CelebrationManager.shared.maintenanceCompleted(title: "Issue resolved!")
         }
+    }
+
+    func updateMaintenanceRequest(
+        id: String,
+        title: String,
+        descriptionText: String,
+        category: String,
+        priority: String,
+        notes: String?,
+        estimatedCost: Double?,
+        actualCost: Double?,
+        scheduledDate: Date?
+    ) async throws -> ConvexMaintenanceRequest {
+        var args: [String: Any] = [
+            "id": id,
+            "title": title,
+            "descriptionText": descriptionText,
+            "category": category,
+            "priority": priority
+        ]
+        if let notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            args["notes"] = notes
+        }
+        if let estimatedCost { args["estimatedCost"] = estimatedCost }
+        if let actualCost { args["actualCost"] = actualCost }
+        if let scheduledDate {
+            args["scheduledDate"] = scheduledDate.timeIntervalSince1970 * 1000
+        }
+        return try await client.mutation(ConvexConfig.Functions.updateMaintenanceRequest, args: args)
     }
 
     func assignContractor(requestId: String, contractorId: String) async throws {
@@ -463,6 +500,30 @@ class ConvexDataService: ObservableObject {
             ConvexConfig.Functions.getMarketTrends,
             args: args
         )
+    }
+
+    func refreshLiveMarketTrend(propertyId: String) async throws -> ConvexLiveMarketRefreshResult {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        let result: ConvexLiveMarketRefreshResult = try await client.action(
+            ConvexConfig.Functions.refreshLiveMarketTrend,
+            args: ["userId": userId, "propertyId": propertyId]
+        )
+        marketTrends = try await fetchMarketTrends()
+        return result
+    }
+
+    func refreshLiveMarketPortfolio() async throws -> ConvexLiveMarketPortfolioResult {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        let result: ConvexLiveMarketPortfolioResult = try await client.action(
+            ConvexConfig.Functions.refreshLiveMarketPortfolio,
+            args: ["userId": userId]
+        )
+        marketTrends = try await fetchMarketTrends()
+        return result
     }
 
     func createExpense(_ expense: ConvexExpenseInput) async throws -> ConvexExpense {
@@ -1315,6 +1376,33 @@ struct ConvexMarketTrendUpdateInput {
         if let observedAt { dict["observedAt"] = observedAt.timeIntervalSince1970 * 1000 }
         return dict
     }
+}
+
+struct ConvexLiveMarketRefreshResult: Codable {
+    let success: Bool
+    let propertyId: String
+    let propertyName: String
+    let trendId: String?
+    let estimatePrice: Double?
+    let estimateRent: Double?
+    let source: String?
+}
+
+struct ConvexLiveMarketPortfolioItem: Codable, Identifiable {
+    let propertyId: String
+    let propertyName: String
+    let error: String?
+
+    var id: String { propertyId }
+}
+
+struct ConvexLiveMarketPortfolioResult: Codable {
+    let success: Bool
+    let totalProperties: Int
+    let refreshed: Int
+    let failed: Int
+    let refreshedItems: [ConvexLiveMarketPortfolioItem]
+    let failedItems: [ConvexLiveMarketPortfolioItem]
 }
 
 struct ConvexContractor: Codable, Identifiable {

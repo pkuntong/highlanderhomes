@@ -592,6 +592,9 @@ struct ConvexTriageDetailView: View {
                             // Header Card
                             ConvexDetailHeaderCard(request: request)
 
+                            // Editable details (diagnosis/cause/description)
+                            MaintenanceRequestEditCard(request: request)
+
                             // Workflow Steps
                             ConvexTriageWorkflowView(requestId: requestId, onMarkedComplete: onMarkedComplete)
 
@@ -687,6 +690,204 @@ struct ConvexDetailHeaderCard: View {
         }
         .padding(Theme.Spacing.lg)
         .cardStyle()
+    }
+}
+
+struct MaintenanceRequestEditCard: View {
+    let request: ConvexMaintenanceRequest
+
+    @EnvironmentObject var dataService: ConvexDataService
+
+    @State private var title: String
+    @State private var descriptionText: String
+    @State private var category: String
+    @State private var priority: String
+    @State private var rootCause: String
+    @State private var estimatedCost: String
+    @State private var actualCost: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    private let categories = [
+        "plumbing",
+        "electrical",
+        "hvac",
+        "appliance",
+        "structural",
+        "landscaping",
+        "other",
+    ]
+
+    private let priorities = [
+        "low",
+        "normal",
+        "high",
+        "urgent",
+        "emergency",
+    ]
+
+    init(request: ConvexMaintenanceRequest) {
+        self.request = request
+        _title = State(initialValue: request.title)
+        _descriptionText = State(initialValue: request.description ?? "")
+        _category = State(initialValue: request.category.lowercased())
+        _priority = State(initialValue: request.priority.lowercased())
+        _rootCause = State(initialValue: request.notes ?? "")
+        if let estimatedCost = request.estimatedCost {
+            _estimatedCost = State(initialValue: String(format: "%.2f", estimatedCost))
+        } else {
+            _estimatedCost = State(initialValue: "")
+        }
+        if let actualCost = request.actualCost {
+            _actualCost = State(initialValue: String(format: "%.2f", actualCost))
+        } else {
+            _actualCost = State(initialValue: "")
+        }
+    }
+
+    private var canSave: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack {
+                Text("Edit Request")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Theme.Colors.textPrimary)
+                Spacer()
+                if isSaving {
+                    ProgressView()
+                        .tint(Theme.Colors.emerald)
+                }
+            }
+
+            TextField("Title", text: $title)
+                .textFieldStyle(.roundedBorder)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Description")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.Colors.textSecondary)
+                TextEditor(text: $descriptionText)
+                    .frame(minHeight: 90)
+                    .padding(6)
+                    .background {
+                        RoundedRectangle(cornerRadius: Theme.Radius.small)
+                            .fill(Theme.Colors.slate800)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                    .stroke(Theme.Colors.slate700, lineWidth: 1)
+                            }
+                    }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Cause / Findings")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.Colors.textSecondary)
+                TextEditor(text: $rootCause)
+                    .frame(minHeight: 72)
+                    .padding(6)
+                    .background {
+                        RoundedRectangle(cornerRadius: Theme.Radius.small)
+                            .fill(Theme.Colors.slate800)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                    .stroke(Theme.Colors.slate700, lineWidth: 1)
+                            }
+                    }
+            }
+
+            HStack(spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Category")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Theme.Colors.textSecondary)
+                    Picker("Category", selection: $category) {
+                        ForEach(categories, id: \.self) { item in
+                            Text(item.capitalized).tag(item)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.Colors.emerald)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Priority")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Theme.Colors.textSecondary)
+                    Picker("Priority", selection: $priority) {
+                        ForEach(priorities, id: \.self) { item in
+                            Text(item.capitalized).tag(item)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.Colors.emerald)
+                }
+            }
+
+            HStack(spacing: Theme.Spacing.md) {
+                FormField(label: "Estimated Cost", text: $estimatedCost, placeholder: "0.00", keyboard: .decimalPad)
+                FormField(label: "Actual Cost", text: $actualCost, placeholder: "0.00", keyboard: .decimalPad)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.Colors.alertRed)
+            }
+
+            Button {
+                Task { await saveChanges() }
+            } label: {
+                Text(isSaving ? "Saving..." : "Save Changes")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Theme.Colors.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background {
+                        Capsule().fill(Theme.Colors.emerald.opacity(isSaving || !canSave ? 0.45 : 1))
+                    }
+            }
+            .disabled(isSaving || !canSave)
+            .buttonStyle(.plain)
+        }
+        .padding(Theme.Spacing.lg)
+        .cardStyle()
+    }
+
+    private func saveChanges() async {
+        guard canSave, !isSaving else { return }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            _ = try await dataService.updateMaintenanceRequest(
+                id: request.id,
+                title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                descriptionText: descriptionText.trimmingCharacters(in: .whitespacesAndNewlines),
+                category: category,
+                priority: priority,
+                notes: rootCause.trimmingCharacters(in: .whitespacesAndNewlines),
+                estimatedCost: parseAmount(estimatedCost),
+                actualCost: parseAmount(actualCost),
+                scheduledDate: request.scheduledDateValue
+            )
+            await dataService.loadAllData()
+            HapticManager.shared.success()
+        } catch {
+            errorMessage = error.localizedDescription
+            HapticManager.shared.error()
+        }
+    }
+
+    private func parseAmount(_ value: String) -> Double? {
+        let cleaned = value.filter { "0123456789.-".contains($0) }
+        guard !cleaned.isEmpty else { return nil }
+        return Double(cleaned)
     }
 }
 

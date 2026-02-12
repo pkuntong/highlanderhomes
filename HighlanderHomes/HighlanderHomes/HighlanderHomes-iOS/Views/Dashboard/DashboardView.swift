@@ -8,6 +8,9 @@ struct DashboardView: View {
 
     @State private var showingSettings = false
     @State private var selectedTimeRange: TimeRange = .month
+    @State private var isRefreshingLiveMarket = false
+    @State private var marketAlertMessage = ""
+    @State private var showingMarketAlert = false
 
     enum TimeRange: String, CaseIterable {
         case week = "7D"
@@ -50,6 +53,15 @@ struct DashboardView: View {
                             rentPayments: dataService.rentPayments,
                             expenses: dataService.expenses,
                             timeRange: $selectedTimeRange
+                        )
+
+                        MarketTrendsDashboardCard(
+                            trends: dataService.marketTrends,
+                            properties: dataService.properties,
+                            isRefreshing: isRefreshingLiveMarket,
+                            onRefresh: {
+                                Task { await refreshLiveMarket() }
+                            }
                         )
 
                         // Recent Activity
@@ -111,8 +123,28 @@ struct DashboardView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+        .alert("Live Market Pull Failed", isPresented: $showingMarketAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(marketAlertMessage)
+        }
         .onChange(of: showingSettings) { newValue in
             appState.isModalPresented = newValue
+        }
+    }
+
+    private func refreshLiveMarket() async {
+        guard !isRefreshingLiveMarket else { return }
+        isRefreshingLiveMarket = true
+        defer { isRefreshingLiveMarket = false }
+
+        do {
+            _ = try await dataService.refreshLiveMarketPortfolio()
+            HapticManager.shared.success()
+        } catch {
+            marketAlertMessage = error.localizedDescription
+            showingMarketAlert = true
+            HapticManager.shared.error()
         }
     }
 }
@@ -500,6 +532,268 @@ struct RevenueChartCard: View {
         withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
             timeRange = orderedRanges[targetIndex]
         }
+    }
+}
+
+struct MarketTrendsDashboardCard: View {
+    let trends: [ConvexMarketTrend]
+    let properties: [ConvexProperty]
+    let isRefreshing: Bool
+    let onRefresh: () -> Void
+
+    @State private var selectedMetric: Metric = .rent
+    @State private var selectedPropertyId: String = "all"
+
+    enum Metric: String, CaseIterable {
+        case rent = "Rent"
+        case value = "Value"
+
+        var icon: String {
+            switch self {
+            case .rent: return "dollarsign.circle.fill"
+            case .value: return "building.columns.fill"
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .rent: return Theme.Colors.emerald
+            case .value: return Theme.Colors.infoBlue
+            }
+        }
+    }
+
+    struct ChartPoint: Identifiable {
+        let id = UUID()
+        let date: Date
+        let averageRent: Double?
+        let averageValue: Double?
+    }
+
+    struct PropertySnapshot: Identifiable {
+        let id: String
+        let propertyName: String
+        let rent: Double?
+        let value: Double?
+        let observedDate: Date
+    }
+
+    private var selectedPropertyName: String {
+        if selectedPropertyId == "all" { return "All Properties" }
+        return properties.first(where: { $0.id == selectedPropertyId })?.name ?? "Unknown Property"
+    }
+
+    private var filteredTrends: [ConvexMarketTrend] {
+        if selectedPropertyId == "all" { return trends }
+        return trends.filter { $0.propertyId == selectedPropertyId }
+    }
+
+    private var chartPoints: [ChartPoint] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: filteredTrends) { calendar.startOfDay(for: $0.observedDate) }
+
+        return grouped.keys.sorted().suffix(24).map { date in
+            let rows = grouped[date] ?? []
+            let rents = rows.compactMap { $0.estimateRent }
+            let values = rows.compactMap { $0.estimatePrice }
+
+            let avgRent = rents.isEmpty ? nil : rents.reduce(0, +) / Double(rents.count)
+            let avgValue = values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+            return ChartPoint(date: date, averageRent: avgRent, averageValue: avgValue)
+        }
+    }
+
+    private var pointsForSelectedMetric: [ChartPoint] {
+        chartPoints.filter { point in
+            selectedMetric == .rent ? point.averageRent != nil : point.averageValue != nil
+        }
+    }
+
+    private var latestByProperty: [PropertySnapshot] {
+        let grouped = Dictionary(grouping: trends.compactMap { trend -> (String, ConvexMarketTrend)? in
+            guard let propertyId = trend.propertyId else { return nil }
+            return (propertyId, trend)
+        }, by: { $0.0 })
+
+        return grouped.compactMap { propertyId, entries in
+            guard let latest = entries.map(\.1).max(by: { $0.observedAt < $1.observedAt }) else { return nil }
+            let name = properties.first(where: { $0.id == propertyId })?.name ?? latest.areaLabel
+            return PropertySnapshot(
+                id: propertyId,
+                propertyName: name,
+                rent: latest.estimateRent,
+                value: latest.estimatePrice,
+                observedDate: latest.observedDate
+            )
+        }
+        .sorted { $0.propertyName < $1.propertyName }
+    }
+
+    private var latestValueText: String {
+        guard let latest = pointsForSelectedMetric.last else { return "—" }
+        let value = selectedMetric == .rent ? latest.averageRent : latest.averageValue
+        guard let value else { return "—" }
+        return ConvexMarketTrend.currencyFormatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+    }
+
+    private var latestDateText: String {
+        guard let latest = pointsForSelectedMetric.last else { return "No snapshots yet" }
+        return "Updated \(latest.date.formatted(date: .abbreviated, time: .omitted))"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Live Market")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(Theme.Colors.textPrimary)
+                    Text("\(selectedPropertyName) \u{2022} \(latestDateText)")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.Colors.textMuted)
+                }
+
+                Spacer()
+
+                Button(isRefreshing ? "Pulling..." : "Pull Live") {
+                    onRefresh()
+                }
+                .disabled(isRefreshing)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Theme.Colors.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background {
+                    Capsule()
+                        .fill(Theme.Colors.infoBlue.opacity(isRefreshing ? 0.5 : 1))
+                }
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: selectedMetric.icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(selectedMetric.color)
+
+                Text(latestValueText)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(Theme.Colors.textPrimary)
+
+                Spacer()
+            }
+
+            Picker("Metric", selection: $selectedMetric) {
+                ForEach(Metric.allCases, id: \.self) { metric in
+                    Text(metric.rawValue).tag(metric)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Picker("Property", selection: $selectedPropertyId) {
+                Text("All Properties").tag("all")
+                ForEach(properties, id: \.id) { property in
+                    Text(property.name).tag(property.id)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(Theme.Colors.emerald)
+
+            if pointsForSelectedMetric.isEmpty {
+                RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                    .fill(Theme.Colors.slate800.opacity(0.5))
+                    .frame(height: 170)
+                    .overlay {
+                        VStack(spacing: 8) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 26))
+                                .foregroundColor(Theme.Colors.slate500)
+                            Text("No market data yet")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            Text("Use Pull Live to fetch current market snapshots.")
+                                .font(.system(size: 12))
+                                .foregroundColor(Theme.Colors.textMuted)
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                    }
+            } else {
+                Chart(pointsForSelectedMetric) { point in
+                    let value = selectedMetric == .rent ? point.averageRent : point.averageValue
+                    if let value {
+                        AreaMark(
+                            x: .value("Date", point.date),
+                            y: .value("Value", value)
+                        )
+                        .foregroundStyle(selectedMetric.color.opacity(0.18))
+
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("Value", value)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .lineStyle(StrokeStyle(lineWidth: 3))
+                        .foregroundStyle(selectedMetric.color)
+
+                        PointMark(
+                            x: .value("Date", point.date),
+                            y: .value("Value", value)
+                        )
+                        .foregroundStyle(selectedMetric.color)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) { value in
+                        AxisValueLabel {
+                            if let amount = value.as(Double.self) {
+                                Text("$\(Int(amount / 1000))k")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Theme.Colors.textMuted)
+                            }
+                        }
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(date.formatted(.dateTime.month(.abbreviated).day()))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(Theme.Colors.textMuted)
+                            }
+                        }
+                    }
+                }
+                .frame(height: 170)
+            }
+
+            if selectedPropertyId == "all" && !latestByProperty.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("By Property")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Theme.Colors.textSecondary)
+                    ForEach(latestByProperty) { snapshot in
+                        HStack(spacing: 8) {
+                            Text(snapshot.propertyName)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(Theme.Colors.textPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            if let rent = snapshot.rent {
+                                Text("Rent \(ConvexMarketTrend.currencyFormatter.string(from: NSNumber(value: rent)) ?? "$\(Int(rent))")")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Theme.Colors.emerald)
+                            }
+                            if let value = snapshot.value {
+                                Text("Value \(ConvexMarketTrend.currencyFormatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))")")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Theme.Colors.infoBlue)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(Theme.Spacing.lg)
+        .cardStyle()
     }
 }
 

@@ -3,10 +3,12 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @Namespace private var tabAnimation
+    private let swipeThreshold: CGFloat = 120
+    @State private var swipeStartTab: AppState.Tab?
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Main Content — swipeable TabView (page style) with custom tab bar
+            // Main Content
             TabView(selection: $appState.selectedTab) {
                 DashboardView()
                     .tag(AppState.Tab.dashboard)
@@ -21,6 +23,7 @@ struct ContentView: View {
                     .tag(AppState.Tab.finances)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut(duration: 0.22), value: appState.selectedTab)
 
             // Custom Tab Bar
             if !appState.isModalPresented {
@@ -29,7 +32,46 @@ struct ContentView: View {
                     .padding(.bottom, 8)
             }
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { _ in
+                    if swipeStartTab == nil {
+                        swipeStartTab = appState.selectedTab
+                    }
+                }
+                .onEnded { value in
+                    let startedTab = swipeStartTab ?? appState.selectedTab
+                    swipeStartTab = nil
+
+                    // If TabView already paged successfully, don't step again.
+                    guard appState.selectedTab == startedTab else { return }
+                    guard abs(value.translation.width) > abs(value.translation.height) * 1.15 else { return }
+                    if value.translation.width <= -swipeThreshold {
+                        switchTab(forward: true)
+                    } else if value.translation.width >= swipeThreshold {
+                        switchTab(forward: false)
+                    }
+                }
+        )
         .ignoresSafeArea(.keyboard)
+    }
+
+    private func switchTab(forward: Bool) {
+        let allTabs = AppState.Tab.allCases
+        guard let currentIndex = allTabs.firstIndex(of: appState.selectedTab) else { return }
+
+        let targetIndex: Int
+        if forward {
+            targetIndex = min(currentIndex + 1, allTabs.count - 1)
+        } else {
+            targetIndex = max(currentIndex - 1, 0)
+        }
+
+        guard targetIndex != currentIndex else { return }
+        HapticManager.shared.selection()
+        withAnimation(.easeInOut(duration: 0.22)) {
+            appState.selectedTab = allTabs[targetIndex]
+        }
     }
 }
 

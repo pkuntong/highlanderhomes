@@ -107,6 +107,57 @@ export const create = mutation({
 });
 
 /**
+ * Update maintenance request details
+ */
+export const update = mutation({
+  args: {
+    id: v.id("maintenanceRequests"),
+    title: v.optional(v.string()),
+    descriptionText: v.optional(v.string()),
+    category: v.optional(v.string()),
+    priority: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    estimatedCost: v.optional(v.number()),
+    actualCost: v.optional(v.number()),
+    scheduledDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args;
+    const request = await ctx.db.get(id);
+    if (!request) {
+      throw new Error("Maintenance request not found");
+    }
+
+    await ctx.db.patch(id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(id);
+    return {
+      _id: updated!._id,
+      id: updated!._id,
+      propertyId: updated!.propertyId,
+      tenantId: updated!.tenantId,
+      contractorId: updated!.contractorId,
+      title: updated!.title,
+      description: updated!.descriptionText,
+      category: updated!.category,
+      priority: updated!.priority,
+      status: updated!.status,
+      photoURLs: updated!.photoURLs,
+      scheduledDate: updated!.scheduledDate,
+      completedDate: updated!.completedDate,
+      estimatedCost: updated!.estimatedCost,
+      actualCost: updated!.actualCost,
+      notes: updated!.notes,
+      createdAt: updated!.createdAt,
+      updatedAt: updated!.updatedAt,
+    };
+  },
+});
+
+/**
  * Update maintenance request status
  */
 export const updateStatus = mutation({

@@ -4,15 +4,24 @@ struct PropertyDetailView: View {
     let property: ConvexProperty
     @EnvironmentObject var dataService: ConvexDataService
 
+    @State private var showingEditProperty = false
     @State private var showingAddInsurance = false
     @State private var showingAddLicense = false
     @State private var showingMarketTrendSheet = false
     @State private var selectedPolicy: ConvexInsurancePolicy?
     @State private var selectedLicense: ConvexRentalLicense?
+    @State private var selectedTenant: ConvexTenant?
     @State private var selectedMarketTrend: ConvexMarketTrend?
+    @State private var isRefreshingMarketLive = false
+    @State private var marketRefreshAlertMessage = ""
+    @State private var showingMarketRefreshAlert = false
+
+    private var currentProperty: ConvexProperty {
+        dataService.properties.first(where: { $0.id == property.id }) ?? property
+    }
 
     private var tenants: [ConvexTenant] {
-        dataService.tenants.filter { $0.propertyId == property.id }
+        dataService.tenants.filter { $0.propertyId == currentProperty.id }
     }
 
     private var activeTenants: [ConvexTenant] {
@@ -20,7 +29,7 @@ struct PropertyDetailView: View {
     }
 
     private var maintenanceRequests: [ConvexMaintenanceRequest] {
-        dataService.maintenanceRequests.filter { $0.propertyId == property.id }
+        dataService.maintenanceRequests.filter { $0.propertyId == currentProperty.id }
     }
 
     private var activeMaintenanceCount: Int {
@@ -28,28 +37,28 @@ struct PropertyDetailView: View {
     }
 
     private var rentPayments: [ConvexRentPayment] {
-        dataService.rentPayments.filter { $0.propertyId == property.id }
+        dataService.rentPayments.filter { $0.propertyId == currentProperty.id }
     }
 
     private var expenses: [ConvexExpense] {
-        dataService.expenses.filter { $0.propertyId == property.id }
+        dataService.expenses.filter { $0.propertyId == currentProperty.id }
     }
 
     private var insurancePolicies: [ConvexInsurancePolicy] {
-        let label = normalizeLabel(property.displayAddress)
+        let label = normalizeLabel(currentProperty.displayAddress)
         return dataService.insurancePolicies.filter { policy in
             if let propertyId = policy.propertyId {
-                return propertyId == property.id
+                return propertyId == currentProperty.id
             }
             return normalizeLabel(policy.propertyLabel) == label
         }
     }
 
     private var rentalLicenses: [ConvexRentalLicense] {
-        let label = normalizeLabel(property.displayAddress)
+        let label = normalizeLabel(currentProperty.displayAddress)
         return dataService.rentalLicenses.filter { license in
             if let propertyId = license.propertyId {
-                return propertyId == property.id
+                return propertyId == currentProperty.id
             }
             return normalizeLabel(license.propertyLabel) == label
         }
@@ -59,15 +68,15 @@ struct PropertyDetailView: View {
         dataService.marketTrends
             .filter { trend in
                 if let trendPropertyId = trend.propertyId {
-                    return trendPropertyId == property.id
+                    return trendPropertyId == currentProperty.id
                 }
-                return normalizeLabel(trend.areaLabel).contains(normalizeLabel(property.zipCode))
+                return normalizeLabel(trend.areaLabel).contains(normalizeLabel(currentProperty.zipCode))
             }
             .sorted { $0.observedAt > $1.observedAt }
     }
 
     private var monthlyIncome: Double {
-        property.monthlyRent
+        currentProperty.monthlyRent
     }
 
     private var monthlyExpenses: Double {
@@ -82,8 +91,8 @@ struct PropertyDetailView: View {
     }
 
     private var occupancyRate: Int {
-        guard property.units > 0 else { return 0 }
-        return Int(Double(activeTenants.count) / Double(property.units) * 100)
+        guard currentProperty.units > 0 else { return 0 }
+        return Int(Double(activeTenants.count) / Double(currentProperty.units) * 100)
     }
 
     var body: some View {
@@ -101,16 +110,21 @@ struct PropertyDetailView: View {
                     )
 
                     // Address
-                    PropertyAddressCard(property: property)
+                    PropertyAddressCard(property: currentProperty) {
+                        showingEditProperty = true
+                    }
 
                     // Tenants Section
                     PropertyTenantsSection(
                         tenants: activeTenants,
-                        totalUnits: property.units
+                        onSelectTenant: { selectedTenant = $0 }
                     )
 
                     // Leases Section
-                    PropertyLeasesSection(tenants: tenants)
+                    PropertyLeasesSection(
+                        tenants: tenants,
+                        onSelectTenant: { selectedTenant = $0 }
+                    )
 
                     // Maintenance Section
                     PropertyMaintenanceSection(
@@ -137,7 +151,11 @@ struct PropertyDetailView: View {
 
                     PropertyMarketSection(
                         trends: marketTrends,
+                        isRefreshingLive: isRefreshingMarketLive,
                         onAdd: { showingMarketTrendSheet = true },
+                        onRefreshLive: {
+                            Task { await refreshLiveMarket() }
+                        },
                         onSelect: { selectedMarketTrend = $0 }
                     )
                 }
@@ -145,16 +163,22 @@ struct PropertyDetailView: View {
                 .padding(.bottom, 100)
             }
         }
-        .navigationTitle(property.name)
+        .navigationTitle(currentProperty.name)
         .navigationBarTitleDisplayMode(.large)
         .refreshable {
             await dataService.loadAllData()
         }
+        .sheet(isPresented: $showingEditProperty) {
+            EditPropertySheet(property: currentProperty)
+        }
         .sheet(isPresented: $showingAddInsurance) {
-            AddEntitySheet(selectedTab: .insurance, prefillProperty: property)
+            AddEntitySheet(selectedTab: .insurance, prefillProperty: currentProperty)
         }
         .sheet(isPresented: $showingAddLicense) {
-            AddEntitySheet(selectedTab: .licenses, prefillProperty: property)
+            AddEntitySheet(selectedTab: .licenses, prefillProperty: currentProperty)
+        }
+        .sheet(item: $selectedTenant) { tenant in
+            EditTenantSheet(tenant: tenant)
         }
         .sheet(item: $selectedPolicy) { policy in
             ConvexInsurancePolicyDetailSheet(policy: policy)
@@ -163,15 +187,35 @@ struct PropertyDetailView: View {
             ConvexRentalLicenseDetailSheet(license: license)
         }
         .sheet(isPresented: $showingMarketTrendSheet) {
-            MarketTrendDetailSheet(property: property)
+            MarketTrendDetailSheet(property: currentProperty)
         }
         .sheet(item: $selectedMarketTrend) { trend in
-            MarketTrendDetailSheet(property: property, trend: trend)
+            MarketTrendDetailSheet(property: currentProperty, trend: trend)
+        }
+        .alert("Live Market Pull Failed", isPresented: $showingMarketRefreshAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(marketRefreshAlertMessage)
         }
     }
 
     private func normalizeLabel(_ value: String) -> String {
         value.lowercased().replacingOccurrences(of: "[^a-z0-9]", with: "", options: .regularExpression)
+    }
+
+    private func refreshLiveMarket() async {
+        guard !isRefreshingMarketLive else { return }
+        isRefreshingMarketLive = true
+        defer { isRefreshingMarketLive = false }
+
+        do {
+            _ = try await dataService.refreshLiveMarketTrend(propertyId: currentProperty.id)
+            HapticManager.shared.success()
+        } catch {
+            marketRefreshAlertMessage = error.localizedDescription
+            showingMarketRefreshAlert = true
+            HapticManager.shared.error()
+        }
     }
 }
 
@@ -234,6 +278,7 @@ struct StatPill: View {
 // MARK: - Address Card
 struct PropertyAddressCard: View {
     let property: ConvexProperty
+    var onEdit: () -> Void = {}
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
@@ -258,6 +303,20 @@ struct PropertyAddressCard: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background { Capsule().fill(Theme.Colors.emerald.opacity(0.15)) }
+
+            Button {
+                onEdit()
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Theme.Colors.infoBlue)
+                    .padding(8)
+                    .background {
+                        Circle()
+                            .fill(Theme.Colors.infoBlue.opacity(0.15))
+                    }
+            }
+            .buttonStyle(.plain)
         }
         .padding(Theme.Spacing.md)
         .cardStyle()
@@ -267,7 +326,7 @@ struct PropertyAddressCard: View {
 // MARK: - Tenants Section
 struct PropertyTenantsSection: View {
     let tenants: [ConvexTenant]
-    let totalUnits: Int
+    let onSelectTenant: (ConvexTenant) -> Void
 
     var body: some View {
         CollapsibleSection(
@@ -282,7 +341,9 @@ struct PropertyTenantsSection: View {
                     .padding(.vertical, Theme.Spacing.sm)
             } else {
                 ForEach(tenants) { tenant in
-                    TenantRow(tenant: tenant)
+                    TenantRow(tenant: tenant) {
+                        onSelectTenant(tenant)
+                    }
                 }
             }
         }
@@ -291,55 +352,66 @@ struct PropertyTenantsSection: View {
 
 struct TenantRow: View {
     let tenant: ConvexTenant
+    var onTap: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.emerald.opacity(0.15))
-                    .frame(width: 36, height: 36)
-                Text(tenant.initials)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(Theme.Colors.emerald)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(tenant.fullName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Theme.Colors.textPrimary)
-                HStack(spacing: 4) {
-                    if let unit = tenant.unit, !unit.isEmpty {
-                        Text("Unit \(unit)")
-                            .font(.system(size: 12))
-                            .foregroundColor(Theme.Colors.textSecondary)
-                        Text("\u{2022}")
-                            .foregroundColor(Theme.Colors.textMuted)
-                    }
-                    Text("$\(Int(tenant.monthlyRent))/mo")
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+        Button {
+            onTap?()
+        } label: {
+            HStack(spacing: Theme.Spacing.sm) {
+                ZStack {
+                    Circle()
+                        .fill(Theme.Colors.emerald.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Text(tenant.initials)
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundColor(Theme.Colors.emerald)
                 }
-            }
 
-            Spacer()
-
-            Text(tenant.leaseStatus)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(tenant.isActive ? Theme.Colors.emerald : Theme.Colors.warningAmber)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background {
-                    Capsule()
-                        .fill((tenant.isActive ? Theme.Colors.emerald : Theme.Colors.warningAmber).opacity(0.15))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tenant.fullName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(Theme.Colors.textPrimary)
+                    HStack(spacing: 4) {
+                        if let unit = tenant.unit, !unit.isEmpty {
+                            Text("Unit \(unit)")
+                                .font(.system(size: 12))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            Text("\u{2022}")
+                                .foregroundColor(Theme.Colors.textMuted)
+                        }
+                        Text("$\(Int(tenant.monthlyRent))/mo")
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(Theme.Colors.emerald)
+                    }
                 }
+
+                Spacer()
+
+                Text(tenant.leaseStatus)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(tenant.isActive ? Theme.Colors.emerald : Theme.Colors.warningAmber)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background {
+                        Capsule()
+                            .fill((tenant.isActive ? Theme.Colors.emerald : Theme.Colors.warningAmber).opacity(0.15))
+                    }
+
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.Colors.infoBlue)
+                }
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
 }
 
 // MARK: - Leases Section
 struct PropertyLeasesSection: View {
     let tenants: [ConvexTenant]
+    let onSelectTenant: (ConvexTenant) -> Void
 
     var body: some View {
         CollapsibleSection(
@@ -354,7 +426,9 @@ struct PropertyLeasesSection: View {
                     .padding(.vertical, Theme.Spacing.sm)
             } else {
                 ForEach(tenants) { tenant in
-                    LeaseRow(tenant: tenant)
+                    LeaseRow(tenant: tenant) {
+                        onSelectTenant(tenant)
+                    }
                 }
             }
         }
@@ -363,6 +437,7 @@ struct PropertyLeasesSection: View {
 
 struct LeaseRow: View {
     let tenant: ConvexTenant
+    var onTap: (() -> Void)? = nil
 
     private var daysRemaining: Int {
         Calendar.current.dateComponents([.day], from: Date(), to: tenant.leaseEndDateValue).day ?? 0
@@ -382,30 +457,359 @@ struct LeaseRow: View {
     }
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(tenant.fullName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Theme.Colors.textPrimary)
+        Button {
+            onTap?()
+        } label: {
+            HStack(spacing: Theme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(tenant.fullName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Theme.Colors.textPrimary)
 
-                Text("\(dateFormatter.string(from: tenant.leaseStartDateValue)) - \(dateFormatter.string(from: tenant.leaseEndDateValue))")
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.Colors.textSecondary)
+                    Text("\(dateFormatter.string(from: tenant.leaseStartDateValue)) - \(dateFormatter.string(from: tenant.leaseEndDateValue))")
+                        .font(.system(size: 12))
+                        .foregroundColor(Theme.Colors.textSecondary)
+                }
+
+                Spacer()
+
+                if daysRemaining < 0 {
+                    Text("Expired")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(leaseColor)
+                } else {
+                    Text("\(daysRemaining)d left")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(leaseColor)
+                }
+
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.Colors.infoBlue)
             }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+}
 
-            Spacer()
+struct EditPropertySheet: View {
+    let property: ConvexProperty
 
-            if daysRemaining < 0 {
-                Text("Expired")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(leaseColor)
-            } else {
-                Text("\(daysRemaining)d left")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(leaseColor)
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService: ConvexDataService
+
+    @State private var name: String
+    @State private var address: String
+    @State private var city: String
+    @State private var state: String
+    @State private var zipCode: String
+    @State private var propertyType: String
+    @State private var units: String
+    @State private var monthlyRent: String
+    @State private var notes: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    private let propertyTypes = ["Single Family", "Multi-Family", "Apartment", "Condo", "Townhouse", "Commercial"]
+
+    init(property: ConvexProperty) {
+        self.property = property
+        _name = State(initialValue: property.name)
+        _address = State(initialValue: property.address)
+        _city = State(initialValue: property.city)
+        _state = State(initialValue: property.state)
+        _zipCode = State(initialValue: property.zipCode)
+        _propertyType = State(initialValue: property.propertyType)
+        _units = State(initialValue: String(property.units))
+        _monthlyRent = State(initialValue: String(format: "%.0f", property.monthlyRent))
+        _notes = State(initialValue: property.notes ?? "")
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !state.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !zipCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.Colors.background.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.md) {
+                        FormField(label: "Name", text: $name, placeholder: "Property name")
+                        FormField(label: "Address", text: $address, placeholder: "Street address")
+                        HStack(spacing: Theme.Spacing.md) {
+                            FormField(label: "City", text: $city, placeholder: "City")
+                            FormField(label: "State", text: $state, placeholder: "MD")
+                        }
+                        HStack(spacing: Theme.Spacing.md) {
+                            FormField(label: "ZIP", text: $zipCode, placeholder: "21222", keyboard: .numberPad)
+                            FormField(label: "Units", text: $units, placeholder: "1", keyboard: .numberPad)
+                        }
+                        FormField(label: "Monthly Rent", text: $monthlyRent, placeholder: "0", keyboard: .decimalPad)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Type")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            Picker("Property Type", selection: $propertyType) {
+                                ForEach(propertyTypes, id: \.self) { type in
+                                    Text(type).tag(type)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(Theme.Colors.emerald)
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Notes")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            TextEditor(text: $notes)
+                                .frame(minHeight: 90)
+                                .padding(6)
+                                .background {
+                                    RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                        .fill(Theme.Colors.slate800)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                                .stroke(Theme.Colors.slate700, lineWidth: 1)
+                                        }
+                                }
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 13))
+                                .foregroundColor(Theme.Colors.alertRed)
+                        }
+                    }
+                    .padding(Theme.Spacing.lg)
+                }
+            }
+            .navigationTitle("Edit Property")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Theme.Colors.slate400)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        Task { await save() }
+                    }
+                    .disabled(isSaving || !canSave)
+                    .foregroundColor(Theme.Colors.emerald)
+                }
             }
         }
-        .padding(.vertical, 4)
+    }
+
+    private func save() async {
+        guard canSave, !isSaving else { return }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            let parsedUnits = max(1, Int(units.filter { "0123456789".contains($0) }) ?? property.units)
+            let parsedRent = Double(monthlyRent.filter { "0123456789.-".contains($0) }) ?? property.monthlyRent
+
+            let updates: [String: Any] = [
+                "name": name.trimmingCharacters(in: .whitespacesAndNewlines),
+                "address": address.trimmingCharacters(in: .whitespacesAndNewlines),
+                "city": city.trimmingCharacters(in: .whitespacesAndNewlines),
+                "state": state.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+                "zipCode": zipCode.trimmingCharacters(in: .whitespacesAndNewlines),
+                "propertyType": propertyType,
+                "units": parsedUnits,
+                "monthlyRent": parsedRent,
+                "notes": notes.trimmedNil ?? ""
+            ]
+
+            _ = try await dataService.updateProperty(id: property.id, updates: updates)
+            await dataService.loadAllData()
+            HapticManager.shared.success()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            HapticManager.shared.error()
+        }
+    }
+}
+
+struct EditTenantSheet: View {
+    let tenant: ConvexTenant
+
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService: ConvexDataService
+
+    @State private var firstName: String
+    @State private var lastName: String
+    @State private var email: String
+    @State private var phone: String
+    @State private var unit: String
+    @State private var propertyId: String
+    @State private var leaseStartDate: Date
+    @State private var leaseEndDate: Date
+    @State private var monthlyRent: String
+    @State private var securityDeposit: String
+    @State private var isActive: Bool
+    @State private var notes: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(tenant: ConvexTenant) {
+        self.tenant = tenant
+        _firstName = State(initialValue: tenant.firstName)
+        _lastName = State(initialValue: tenant.lastName)
+        _email = State(initialValue: tenant.email)
+        _phone = State(initialValue: tenant.phone)
+        _unit = State(initialValue: tenant.unit ?? "")
+        _propertyId = State(initialValue: tenant.propertyId)
+        _leaseStartDate = State(initialValue: tenant.leaseStartDateValue)
+        _leaseEndDate = State(initialValue: tenant.leaseEndDateValue)
+        _monthlyRent = State(initialValue: String(format: "%.0f", tenant.monthlyRent))
+        _securityDeposit = State(initialValue: String(format: "%.0f", tenant.securityDeposit))
+        _isActive = State(initialValue: tenant.isActive)
+        _notes = State(initialValue: tenant.notes ?? "")
+    }
+
+    private var canSave: Bool {
+        !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !lastName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !propertyId.isEmpty &&
+        leaseEndDate >= leaseStartDate
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.Colors.background.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.md) {
+                        HStack(spacing: Theme.Spacing.md) {
+                            FormField(label: "First Name", text: $firstName, placeholder: "First")
+                            FormField(label: "Last Name", text: $lastName, placeholder: "Last")
+                        }
+                        FormField(label: "Email", text: $email, placeholder: "name@email.com", keyboard: .emailAddress)
+                        FormField(label: "Phone", text: $phone, placeholder: "(410) 000-0000", keyboard: .phonePad)
+                        FormField(label: "Unit", text: $unit, placeholder: "Unit (optional)")
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Property")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            Picker("Property", selection: $propertyId) {
+                                ForEach(dataService.properties) { property in
+                                    Text(property.name).tag(property.id)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .tint(Theme.Colors.emerald)
+                        }
+
+                        DatePicker("Lease Start", selection: $leaseStartDate, displayedComponents: .date)
+                        DatePicker("Lease End", selection: $leaseEndDate, in: leaseStartDate..., displayedComponents: .date)
+
+                        HStack(spacing: Theme.Spacing.md) {
+                            FormField(label: "Monthly Rent", text: $monthlyRent, placeholder: "0", keyboard: .decimalPad)
+                            FormField(label: "Security Deposit", text: $securityDeposit, placeholder: "0", keyboard: .decimalPad)
+                        }
+
+                        Toggle("Active Tenant", isOn: $isActive)
+                            .tint(Theme.Colors.emerald)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Notes")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Theme.Colors.textSecondary)
+                            TextEditor(text: $notes)
+                                .frame(minHeight: 90)
+                                .padding(6)
+                                .background {
+                                    RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                        .fill(Theme.Colors.slate800)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: Theme.Radius.small)
+                                                .stroke(Theme.Colors.slate700, lineWidth: 1)
+                                        }
+                                }
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 13))
+                                .foregroundColor(Theme.Colors.alertRed)
+                        }
+                    }
+                    .padding(Theme.Spacing.lg)
+                }
+            }
+            .navigationTitle("Edit Tenant / Lease")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Theme.Colors.slate400)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        Task { await save() }
+                    }
+                    .disabled(isSaving || !canSave)
+                    .foregroundColor(Theme.Colors.emerald)
+                }
+            }
+        }
+    }
+
+    private func save() async {
+        guard canSave, !isSaving else { return }
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            let rent = Double(monthlyRent.filter { "0123456789.-".contains($0) }) ?? tenant.monthlyRent
+            let deposit = Double(securityDeposit.filter { "0123456789.-".contains($0) }) ?? tenant.securityDeposit
+
+            var updates: [String: Any] = [
+                "firstName": firstName.trimmingCharacters(in: .whitespacesAndNewlines),
+                "lastName": lastName.trimmingCharacters(in: .whitespacesAndNewlines),
+                "email": email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                "phone": phone.trimmingCharacters(in: .whitespacesAndNewlines),
+                "propertyId": propertyId,
+                "leaseStartDate": leaseStartDate.timeIntervalSince1970 * 1000,
+                "leaseEndDate": leaseEndDate.timeIntervalSince1970 * 1000,
+                "monthlyRent": rent,
+                "securityDeposit": deposit,
+                "isActive": isActive,
+                "notes": notes.trimmedNil ?? ""
+            ]
+
+            if !unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                updates["unit"] = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                updates["unit"] = ""
+            }
+
+            _ = try await dataService.updateTenant(id: tenant.id, updates: updates)
+            await dataService.loadAllData()
+            HapticManager.shared.success()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            HapticManager.shared.error()
+        }
     }
 }
 
@@ -588,7 +992,9 @@ struct PropertyDocumentsSection: View {
 // MARK: - Market Section
 struct PropertyMarketSection: View {
     let trends: [ConvexMarketTrend]
+    let isRefreshingLive: Bool
     let onAdd: () -> Void
+    let onRefreshLive: () -> Void
     let onSelect: (ConvexMarketTrend) -> Void
 
     var body: some View {
@@ -604,6 +1010,16 @@ struct PropertyMarketSection: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background { Capsule().fill(Theme.Colors.emerald) }
+
+                Button(isRefreshingLive ? "Pulling..." : "Pull Live") {
+                    onRefreshLive()
+                }
+                .disabled(isRefreshingLive)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Theme.Colors.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background { Capsule().fill(Theme.Colors.infoBlue.opacity(isRefreshingLive ? 0.5 : 1)) }
 
                 Spacer()
             }
