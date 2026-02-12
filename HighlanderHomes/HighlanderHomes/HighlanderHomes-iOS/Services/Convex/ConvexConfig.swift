@@ -31,6 +31,7 @@ enum ConvexConfig {
         static let rentPayments = "rentPayments"
         static let insurancePolicies = "insurancePolicies"
         static let rentalLicenses = "rentalLicenses"
+        static let marketTrends = "marketTrends"
     }
 
     // MARK: - Function Names (define in convex/ folder)
@@ -47,6 +48,7 @@ enum ConvexConfig {
         static let getExpenses = "expenses:list"
         static let getInsurancePolicies = "insurancePolicies:list"
         static let getRentalLicenses = "rentalLicenses:list"
+        static let getMarketTrends = "marketTrends:list"
         static let getCurrentUser = "users:current"
 
         // Mutations (write data)
@@ -72,6 +74,9 @@ enum ConvexConfig {
         static let createRentalLicense = "rentalLicenses:create"
         static let updateRentalLicense = "rentalLicenses:update"
         static let deleteRentalLicense = "rentalLicenses:remove"
+        static let createMarketTrend = "marketTrends:create"
+        static let updateMarketTrend = "marketTrends:update"
+        static let deleteMarketTrend = "marketTrends:remove"
         static let createUser = "users:create"
         static let updateUser = "users:update"
         static let deleteUser = "users:deleteAccount"

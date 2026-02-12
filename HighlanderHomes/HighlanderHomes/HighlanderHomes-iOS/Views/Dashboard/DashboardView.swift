@@ -49,7 +49,7 @@ struct DashboardView: View {
                         RevenueChartCard(
                             rentPayments: dataService.rentPayments,
                             expenses: dataService.expenses,
-                            timeRange: selectedTimeRange
+                            timeRange: $selectedTimeRange
                         )
 
                         // Recent Activity
@@ -145,11 +145,11 @@ struct DashboardRefreshBanner: View {
     var body: some View {
         HStack(spacing: 10) {
             ProgressView()
-                .tint(.white)
+                .tint(Theme.Colors.textPrimary)
 
             Text("Refreshing data...")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Theme.Colors.textPrimary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -246,59 +246,118 @@ struct QuickActionCard: View {
 struct RevenueChartCard: View {
     let rentPayments: [ConvexRentPayment]
     let expenses: [ConvexExpense]
-    let timeRange: DashboardView.TimeRange
+    @Binding var timeRange: DashboardView.TimeRange
 
-    private var monthlyData: [MonthlyFinancial] {
+    private var orderedRanges: [DashboardView.TimeRange] {
+        DashboardView.TimeRange.allCases
+    }
+
+    private var chartData: [MonthlyFinancial] {
         let calendar = Calendar.current
         let now = Date()
-        let monthsBack: Int = {
-            switch timeRange {
-            case .week: return 1
-            case .month: return 3
-            case .quarter: return 6
-            case .year: return 12
-            }
-        }()
-
         var data: [MonthlyFinancial] = []
 
-        for i in (0..<monthsBack).reversed() {
-            guard let monthDate = calendar.date(byAdding: .month, value: -i, to: now) else { continue }
-            let components = calendar.dateComponents([.year, .month], from: monthDate)
-            guard let monthStart = calendar.date(from: components),
-                  let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else { continue }
+        let dayFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "d"
+            return formatter
+        }()
 
-            let startMs = monthStart.timeIntervalSince1970 * 1000
-            let endMs = monthEnd.timeIntervalSince1970 * 1000
+        let weekdayFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "E"
+            return formatter
+        }()
 
-            let income = rentPayments
-                .filter { $0.paymentDate >= startMs && $0.paymentDate < endMs && $0.status == "completed" }
-                .reduce(0.0) { $0 + $1.amount }
-
-            let expenseTotal = expenses
-                .filter { $0.date >= startMs && $0.date < endMs }
-                .reduce(0.0) { $0 + $1.amount }
-
+        let monthFormatter: DateFormatter = {
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM"
+            return formatter
+        }()
 
-            data.append(MonthlyFinancial(
-                month: formatter.string(from: monthDate),
-                income: income,
-                expenses: expenseTotal,
-                date: monthDate
-            ))
+        let weekFormatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "M/d"
+            return formatter
+        }()
+
+        func incomeBetween(start: Date, end: Date) -> Double {
+            let startMs = start.timeIntervalSince1970 * 1000
+            let endMs = end.timeIntervalSince1970 * 1000
+            return rentPayments
+                .filter { $0.paymentDate >= startMs && $0.paymentDate < endMs && $0.status == "completed" }
+                .reduce(0.0) { $0 + $1.amount }
+        }
+
+        func expenseBetween(start: Date, end: Date) -> Double {
+            let startMs = start.timeIntervalSince1970 * 1000
+            let endMs = end.timeIntervalSince1970 * 1000
+            return expenses
+                .filter { $0.date >= startMs && $0.date < endMs }
+                .reduce(0.0) { $0 + $1.amount }
+        }
+
+        switch timeRange {
+        case .week:
+            for i in stride(from: 6, through: 0, by: -1) {
+                guard let day = calendar.date(byAdding: .day, value: -i, to: now) else { continue }
+                let dayStart = calendar.startOfDay(for: day)
+                guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { continue }
+                data.append(MonthlyFinancial(
+                    month: weekdayFormatter.string(from: dayStart),
+                    income: incomeBetween(start: dayStart, end: dayEnd),
+                    expenses: expenseBetween(start: dayStart, end: dayEnd),
+                    date: dayStart
+                ))
+            }
+        case .month:
+            for i in stride(from: 29, through: 0, by: -1) {
+                guard let day = calendar.date(byAdding: .day, value: -i, to: now) else { continue }
+                let dayStart = calendar.startOfDay(for: day)
+                guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { continue }
+                data.append(MonthlyFinancial(
+                    month: dayFormatter.string(from: dayStart),
+                    income: incomeBetween(start: dayStart, end: dayEnd),
+                    expenses: expenseBetween(start: dayStart, end: dayEnd),
+                    date: dayStart
+                ))
+            }
+        case .quarter:
+            for i in stride(from: 12, through: 0, by: -1) {
+                guard let weekDate = calendar.date(byAdding: .weekOfYear, value: -i, to: now) else { continue }
+                let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: weekDate)?.start ?? calendar.startOfDay(for: weekDate)
+                guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: startOfWeek) else { continue }
+                data.append(MonthlyFinancial(
+                    month: weekFormatter.string(from: startOfWeek),
+                    income: incomeBetween(start: startOfWeek, end: weekEnd),
+                    expenses: expenseBetween(start: startOfWeek, end: weekEnd),
+                    date: startOfWeek
+                ))
+            }
+        case .year:
+            for i in stride(from: 11, through: 0, by: -1) {
+                guard let monthDate = calendar.date(byAdding: .month, value: -i, to: now) else { continue }
+                let components = calendar.dateComponents([.year, .month], from: monthDate)
+                guard let monthStart = calendar.date(from: components),
+                      let monthEnd = calendar.date(byAdding: .month, value: 1, to: monthStart) else { continue }
+                data.append(MonthlyFinancial(
+                    month: monthFormatter.string(from: monthStart),
+                    income: incomeBetween(start: monthStart, end: monthEnd),
+                    expenses: expenseBetween(start: monthStart, end: monthEnd),
+                    date: monthStart
+                ))
+            }
         }
 
         return data
     }
 
     private var totalIncome: Double {
-        monthlyData.reduce(0) { $0 + $1.income }
+        chartData.reduce(0) { $0 + $1.income }
     }
 
     private var totalExpenses: Double {
-        monthlyData.reduce(0) { $0 + $1.expenses }
+        chartData.reduce(0) { $0 + $1.expenses }
     }
 
     var body: some View {
@@ -322,7 +381,7 @@ struct RevenueChartCard: View {
                 }
             }
 
-            if monthlyData.isEmpty || monthlyData.allSatisfy({ $0.income == 0 && $0.expenses == 0 }) {
+            if chartData.isEmpty || chartData.allSatisfy({ $0.income == 0 && $0.expenses == 0 }) {
                 // Empty state
                 RoundedRectangle(cornerRadius: Theme.Radius.medium)
                     .fill(Theme.Colors.slate800.opacity(0.5))
@@ -341,7 +400,7 @@ struct RevenueChartCard: View {
                         }
                     }
             } else {
-                Chart(monthlyData) { item in
+                Chart(chartData) { item in
                     BarMark(
                         x: .value("Month", item.month),
                         y: .value("Income", item.income)
@@ -380,27 +439,67 @@ struct RevenueChartCard: View {
             }
 
             // Time Range Picker
-            HStack(spacing: 0) {
+            HStack(spacing: 6) {
                 ForEach(DashboardView.TimeRange.allCases, id: \.self) { range in
-                    Text(range.rawValue)
-                        .font(.system(size: 12, weight: range == timeRange ? .bold : .medium))
-                        .foregroundColor(range == timeRange ? .white : Theme.Colors.textMuted)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background {
-                            if range == timeRange {
-                                Capsule().fill(Theme.Colors.emerald)
-                            }
+                    Button {
+                        HapticManager.shared.selection()
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                            timeRange = range
                         }
+                    } label: {
+                        Text(range.rawValue)
+                            .font(.system(size: 12, weight: range == timeRange ? .bold : .medium))
+                            .foregroundColor(range == timeRange ? .white : Theme.Colors.textMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background {
+                                if range == timeRange {
+                                    Capsule().fill(Theme.Colors.emerald)
+                                } else {
+                                    Capsule().fill(Color.clear)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(3)
-            .background { Capsule().fill(Theme.Colors.slate800) }
+            .padding(4)
+            .background {
+                Capsule()
+                    .fill(Theme.Colors.slate800)
+                    .overlay { Capsule().stroke(Theme.Colors.slate700, lineWidth: 1) }
+            }
         }
         .padding(Theme.Spacing.lg)
         .cardStyle()
+        .gesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    if value.translation.width < -24 {
+                        stepRange(forward: true)
+                    } else if value.translation.width > 24 {
+                        stepRange(forward: false)
+                    }
+                }
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Revenue chart showing \(Int(totalIncome)) dollars income")
+    }
+
+    private func stepRange(forward: Bool) {
+        guard let currentIndex = orderedRanges.firstIndex(of: timeRange) else { return }
+        let targetIndex: Int
+        if forward {
+            targetIndex = min(currentIndex + 1, orderedRanges.count - 1)
+        } else {
+            targetIndex = max(currentIndex - 1, 0)
+        }
+        guard targetIndex != currentIndex else { return }
+        HapticManager.shared.selection()
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+            timeRange = orderedRanges[targetIndex]
+        }
     }
 }
 

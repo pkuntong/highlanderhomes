@@ -18,6 +18,7 @@ class ConvexDataService: ObservableObject {
     @Published var expenses: [ConvexExpense] = []
     @Published var insurancePolicies: [ConvexInsurancePolicy] = []
     @Published var rentalLicenses: [ConvexRentalLicense] = []
+    @Published var marketTrends: [ConvexMarketTrend] = []
 
     @Published var isLoading: Bool = false
     @Published var error: String?
@@ -149,6 +150,7 @@ class ConvexDataService: ObservableObject {
             expenses = try await exps
             insurancePolicies = try await policies
             rentalLicenses = try await licenses
+            marketTrends = (try? await fetchMarketTrends()) ?? []
 
             // Generate feed events
             generateFeedEvents()
@@ -448,6 +450,21 @@ class ConvexDataService: ObservableObject {
         )
     }
 
+    // MARK: - Market Trends
+    func fetchMarketTrends(propertyId: String? = nil) async throws -> [ConvexMarketTrend] {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        var args: [String: Any] = ["userId": userId]
+        if let propertyId, !propertyId.isEmpty {
+            args["propertyId"] = propertyId
+        }
+        return try await client.query(
+            ConvexConfig.Functions.getMarketTrends,
+            args: args
+        )
+    }
+
     func createExpense(_ expense: ConvexExpenseInput) async throws -> ConvexExpense {
         guard let userId = effectiveUserId else {
             throw ConvexError.notAuthenticated
@@ -624,6 +641,32 @@ class ConvexDataService: ObservableObject {
     func deleteRentalLicense(id: String) async throws {
         try await client.mutation(
             ConvexConfig.Functions.deleteRentalLicense,
+            args: ["id": id]
+        )
+    }
+
+    func createMarketTrend(_ trend: ConvexMarketTrendInput) async throws -> ConvexMarketTrend {
+        guard let userId = effectiveUserId else {
+            throw ConvexError.notAuthenticated
+        }
+        var args = trend.toDictionary()
+        args["userId"] = userId
+        return try await client.mutation(
+            ConvexConfig.Functions.createMarketTrend,
+            args: args
+        )
+    }
+
+    func updateMarketTrend(_ trend: ConvexMarketTrendUpdateInput) async throws -> ConvexMarketTrend {
+        return try await client.mutation(
+            ConvexConfig.Functions.updateMarketTrend,
+            args: trend.toDictionary()
+        )
+    }
+
+    func deleteMarketTrend(id: String) async throws {
+        try await client.mutation(
+            ConvexConfig.Functions.deleteMarketTrend,
             args: ["id": id]
         )
     }
@@ -1159,6 +1202,118 @@ struct ConvexRentalLicense: Codable, Identifiable {
 
     var isExpiringSoon: Bool {
         daysUntilExpiration >= 0 && daysUntilExpiration <= 60
+    }
+}
+
+struct ConvexMarketTrend: Codable, Identifiable {
+    let id: String
+    var propertyId: String?
+    var title: String
+    var marketType: String
+    var areaLabel: String
+    var estimatePrice: Double?
+    var estimateRent: Double?
+    var yoyChangePct: Double?
+    var demandLevel: String?
+    var source: String?
+    var sourceURL: String?
+    var notes: String?
+    var observedAt: Double
+    var createdAt: Double
+    var updatedAt: Double
+
+    enum CodingKeys: String, CodingKey {
+        case id = "_id"
+        case propertyId, title, marketType, areaLabel
+        case estimatePrice, estimateRent, yoyChangePct, demandLevel
+        case source, sourceURL, notes, observedAt, createdAt, updatedAt
+    }
+
+    static let currencyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
+    var observedDate: Date {
+        Date(timeIntervalSince1970: observedAt / 1000)
+    }
+
+    var priceDisplay: String {
+        guard let estimatePrice else { return "—" }
+        return Self.currencyFormatter.string(from: NSNumber(value: estimatePrice)) ?? "$\(Int(estimatePrice))"
+    }
+
+    var rentDisplay: String {
+        guard let estimateRent else { return "—" }
+        return Self.currencyFormatter.string(from: NSNumber(value: estimateRent)) ?? "$\(Int(estimateRent))"
+    }
+}
+
+struct ConvexMarketTrendInput {
+    var propertyId: String?
+    var title: String
+    var marketType: String
+    var areaLabel: String
+    var estimatePrice: Double?
+    var estimateRent: Double?
+    var yoyChangePct: Double?
+    var demandLevel: String?
+    var source: String?
+    var sourceURL: String?
+    var notes: String?
+    var observedAt: Date?
+
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "title": title,
+            "marketType": marketType,
+            "areaLabel": areaLabel
+        ]
+        if let propertyId, !propertyId.isEmpty { dict["propertyId"] = propertyId }
+        if let estimatePrice { dict["estimatePrice"] = estimatePrice }
+        if let estimateRent { dict["estimateRent"] = estimateRent }
+        if let yoyChangePct { dict["yoyChangePct"] = yoyChangePct }
+        if let demandLevel, !demandLevel.isEmpty { dict["demandLevel"] = demandLevel }
+        if let source, !source.isEmpty { dict["source"] = source }
+        if let sourceURL, !sourceURL.isEmpty { dict["sourceURL"] = sourceURL }
+        if let notes, !notes.isEmpty { dict["notes"] = notes }
+        if let observedAt { dict["observedAt"] = observedAt.timeIntervalSince1970 * 1000 }
+        return dict
+    }
+}
+
+struct ConvexMarketTrendUpdateInput {
+    var id: String
+    var title: String
+    var marketType: String
+    var areaLabel: String
+    var estimatePrice: Double?
+    var estimateRent: Double?
+    var yoyChangePct: Double?
+    var demandLevel: String?
+    var source: String?
+    var sourceURL: String?
+    var notes: String?
+    var observedAt: Date?
+
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "title": title,
+            "marketType": marketType,
+            "areaLabel": areaLabel
+        ]
+        if let estimatePrice { dict["estimatePrice"] = estimatePrice }
+        if let estimateRent { dict["estimateRent"] = estimateRent }
+        if let yoyChangePct { dict["yoyChangePct"] = yoyChangePct }
+        if let demandLevel, !demandLevel.isEmpty { dict["demandLevel"] = demandLevel }
+        if let source, !source.isEmpty { dict["source"] = source }
+        if let sourceURL, !sourceURL.isEmpty { dict["sourceURL"] = sourceURL }
+        if let notes, !notes.isEmpty { dict["notes"] = notes }
+        if let observedAt { dict["observedAt"] = observedAt.timeIntervalSince1970 * 1000 }
+        return dict
     }
 }
 

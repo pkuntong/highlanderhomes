@@ -6,6 +6,8 @@ struct SettingsView: View {
     @EnvironmentObject var dataService: ConvexDataService
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage("app_appearance") private var appAppearanceRaw: String = AppAppearance.light.rawValue
+
     @State private var editedName = ""
     @State private var editedEmail = ""
     @State private var isSaving = false
@@ -39,6 +41,9 @@ struct SettingsView: View {
 
                         // Plan Section
                         planSection
+
+                        // Appearance Section
+                        appearanceSection
 
                         // Account Section
                         accountSection
@@ -220,6 +225,48 @@ struct SettingsView: View {
         .padding(.horizontal, Theme.Spacing.lg)
     }
 
+    // MARK: - Appearance Section
+    private var appearanceSection: some View {
+        let selected = AppAppearance(rawValue: appAppearanceRaw) ?? .light
+
+        return VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            SectionHeader(title: "Appearance")
+
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(AppAppearance.allCases) { appearance in
+                    Button {
+                        HapticManager.shared.selection()
+                        appAppearanceRaw = appearance.rawValue
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: appearance.icon)
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(appearance.label)
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(selected == appearance ? .white : Theme.Colors.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background {
+                            RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                .fill(selected == appearance ? Theme.Colors.emerald : Theme.Colors.slate800)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: Theme.Radius.medium)
+                                        .stroke(Theme.Colors.slate700, lineWidth: selected == appearance ? 0 : 1)
+                                }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Text("Default is Light. Switch to Dark anytime in Settings.")
+                .font(.system(size: 12))
+                .foregroundColor(Theme.Colors.textMuted)
+        }
+        .padding(.horizontal, Theme.Spacing.lg)
+    }
+
     // MARK: - Account Section
     private var accountSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -275,13 +322,13 @@ struct SettingsView: View {
             } label: {
                 HStack {
                     if isChangingPassword {
-                        ProgressView().tint(.white)
+                        ProgressView().tint(Theme.Colors.textPrimary)
                     } else {
                         Text("Update Password")
                     }
                 }
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Theme.Colors.textPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background {
@@ -332,7 +379,7 @@ struct SettingsView: View {
                 } label: {
                     Text("Resend Code")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.Colors.textPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background {
@@ -378,7 +425,7 @@ struct SettingsView: View {
                     Text("Sign Out")
                 }
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Theme.Colors.textPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background {
@@ -425,7 +472,7 @@ struct SettingsView: View {
             } label: {
                 Text("Reload Data")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.Colors.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background {

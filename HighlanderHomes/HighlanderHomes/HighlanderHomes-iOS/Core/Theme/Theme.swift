@@ -1,10 +1,19 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Theme Namespace
 enum Theme {
 
     // MARK: - Color Palette (Modern Slate & Emerald Green)
     enum Colors {
+        private static func dynamicColor(lightHex: String, darkHex: String) -> Color {
+            Color(
+                UIColor { traits in
+                    UIColor(hex: traits.userInterfaceStyle == .dark ? darkHex : lightHex)
+                }
+            )
+        }
+
         // Primary Emerald
         static let emerald = Color(hex: "10B981")
         static let emeraldLight = Color(hex: "34D399")
@@ -12,23 +21,24 @@ enum Theme {
         static let emeraldMuted = Color(hex: "065F46")
 
         // Slate System
-        static let slate50 = Color(hex: "F8FAFC")
-        static let slate100 = Color(hex: "F1F5F9")
-        static let slate200 = Color(hex: "E2E8F0")
-        static let slate300 = Color(hex: "CBD5E1")
-        static let slate400 = Color(hex: "94A3B8")
-        static let slate500 = Color(hex: "64748B")
-        static let slate600 = Color(hex: "475569")
-        static let slate700 = Color(hex: "334155")
-        static let slate800 = Color(hex: "1E293B")
-        static let slate900 = Color(hex: "0F172A")
-        static let slate950 = Color(hex: "020617")
+        // These tokens auto-adapt in Light/Dark mode (Light is intentionally inverted for a clean white/gray UI).
+        static var slate50: Color { dynamicColor(lightHex: "0F172A", darkHex: "F8FAFC") }
+        static var slate100: Color { dynamicColor(lightHex: "1E293B", darkHex: "F1F5F9") }
+        static var slate200: Color { dynamicColor(lightHex: "334155", darkHex: "E2E8F0") }
+        static var slate300: Color { dynamicColor(lightHex: "475569", darkHex: "CBD5E1") }
+        static var slate400: Color { dynamicColor(lightHex: "64748B", darkHex: "94A3B8") }
+        static var slate500: Color { dynamicColor(lightHex: "94A3B8", darkHex: "64748B") }
+        static var slate600: Color { dynamicColor(lightHex: "CBD5E1", darkHex: "475569") }
+        static var slate700: Color { dynamicColor(lightHex: "E2E8F0", darkHex: "334155") }
+        static var slate800: Color { dynamicColor(lightHex: "F1F5F9", darkHex: "1E293B") }
+        static var slate900: Color { dynamicColor(lightHex: "F8FAFC", darkHex: "0F172A") }
+        static var slate950: Color { dynamicColor(lightHex: "FFFFFF", darkHex: "020617") }
 
         // Semantic Colors
-        static let background = slate950
-        static let surface = slate900
-        static let surfaceElevated = slate800
-        static let cardBackground = slate800.opacity(0.7)
+        static var background: Color { slate950 }
+        static var surface: Color { slate900 }
+        static var surfaceElevated: Color { slate800 }
+        static var cardBackground: Color { slate800.opacity(0.7) }
 
         // Status Colors
         static let alertRed = Color(hex: "EF4444")
@@ -44,9 +54,9 @@ enum Theme {
         static let goldMuted = Color(hex: "A16207")
 
         // Text
-        static let textPrimary = slate50
-        static let textSecondary = slate400
-        static let textMuted = slate500
+        static var textPrimary: Color { slate50 }
+        static var textSecondary: Color { slate400 }
+        static var textMuted: Color { slate500 }
     }
 
     // MARK: - Gradients
@@ -204,6 +214,32 @@ extension Color {
             green: Double(g) / 255,
             blue: Double(b) / 255,
             opacity: Double(a) / 255
+        )
+    }
+}
+
+// MARK: - UIColor Hex Extension (for dynamic colors)
+extension UIColor {
+    convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            red: CGFloat(r) / 255,
+            green: CGFloat(g) / 255,
+            blue: CGFloat(b) / 255,
+            alpha: CGFloat(a) / 255
         )
     }
 }

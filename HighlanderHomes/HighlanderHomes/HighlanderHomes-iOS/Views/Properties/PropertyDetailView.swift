@@ -6,8 +6,10 @@ struct PropertyDetailView: View {
 
     @State private var showingAddInsurance = false
     @State private var showingAddLicense = false
+    @State private var showingMarketTrendSheet = false
     @State private var selectedPolicy: ConvexInsurancePolicy?
     @State private var selectedLicense: ConvexRentalLicense?
+    @State private var selectedMarketTrend: ConvexMarketTrend?
 
     private var tenants: [ConvexTenant] {
         dataService.tenants.filter { $0.propertyId == property.id }
@@ -51,6 +53,17 @@ struct PropertyDetailView: View {
             }
             return normalizeLabel(license.propertyLabel) == label
         }
+    }
+
+    private var marketTrends: [ConvexMarketTrend] {
+        dataService.marketTrends
+            .filter { trend in
+                if let trendPropertyId = trend.propertyId {
+                    return trendPropertyId == property.id
+                }
+                return normalizeLabel(trend.areaLabel).contains(normalizeLabel(property.zipCode))
+            }
+            .sorted { $0.observedAt > $1.observedAt }
     }
 
     private var monthlyIncome: Double {
@@ -121,6 +134,12 @@ struct PropertyDetailView: View {
                         onSelectPolicy: { selectedPolicy = $0 },
                         onSelectLicense: { selectedLicense = $0 }
                     )
+
+                    PropertyMarketSection(
+                        trends: marketTrends,
+                        onAdd: { showingMarketTrendSheet = true },
+                        onSelect: { selectedMarketTrend = $0 }
+                    )
                 }
                 .padding(Theme.Spacing.md)
                 .padding(.bottom, 100)
@@ -142,6 +161,12 @@ struct PropertyDetailView: View {
         }
         .sheet(item: $selectedLicense) { license in
             ConvexRentalLicenseDetailSheet(license: license)
+        }
+        .sheet(isPresented: $showingMarketTrendSheet) {
+            MarketTrendDetailSheet(property: property)
+        }
+        .sheet(item: $selectedMarketTrend) { trend in
+            MarketTrendDetailSheet(property: property, trend: trend)
         }
     }
 
@@ -560,6 +585,79 @@ struct PropertyDocumentsSection: View {
     }
 }
 
+// MARK: - Market Section
+struct PropertyMarketSection: View {
+    let trends: [ConvexMarketTrend]
+    let onAdd: () -> Void
+    let onSelect: (ConvexMarketTrend) -> Void
+
+    var body: some View {
+        CollapsibleSection(
+            title: "Market Watch",
+            count: trends.count,
+            icon: "chart.line.uptrend.xyaxis"
+        ) {
+            HStack {
+                Button("Add Snapshot") { onAdd() }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.Colors.textPrimary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background { Capsule().fill(Theme.Colors.emerald) }
+
+                Spacer()
+            }
+            .padding(.bottom, Theme.Spacing.sm)
+
+            if trends.isEmpty {
+                Text("No market snapshots yet")
+                    .font(.system(size: 14))
+                    .foregroundColor(Theme.Colors.textMuted)
+                    .padding(.vertical, Theme.Spacing.sm)
+            } else {
+                ForEach(trends.prefix(8)) { trend in
+                    Button {
+                        onSelect(trend)
+                    } label: {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Image(systemName: "building.columns.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(Theme.Colors.infoBlue)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(trend.title)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Theme.Colors.textPrimary)
+                                Text(trend.areaLabel)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Theme.Colors.textSecondary)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 2) {
+                                if trend.estimateRent != nil {
+                                    Text(trend.rentDisplay)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Theme.Colors.emerald)
+                                }
+                                if trend.estimatePrice != nil {
+                                    Text(trend.priceDisplay)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Theme.Colors.textSecondary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
 struct DocumentRow: View {
     let icon: String
     let title: String
@@ -596,6 +694,232 @@ struct DocumentRow: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct MarketTrendDetailSheet: View {
+    let property: ConvexProperty
+    let trend: ConvexMarketTrend?
+
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService: ConvexDataService
+
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var showDeleteConfirm = false
+
+    @State private var title: String
+    @State private var marketType: String
+    @State private var areaLabel: String
+    @State private var estimatePrice: String
+    @State private var estimateRent: String
+    @State private var yoyChangePct: String
+    @State private var demandLevel: String
+    @State private var source: String
+    @State private var sourceURL: String
+    @State private var notes: String
+    @State private var observedAt: Date
+
+    init(property: ConvexProperty, trend: ConvexMarketTrend? = nil) {
+        self.property = property
+        self.trend = trend
+        _title = State(initialValue: trend?.title ?? "Market Snapshot")
+        _marketType = State(initialValue: trend?.marketType ?? "areaTrend")
+        _areaLabel = State(initialValue: trend?.areaLabel ?? "\(property.city), \(property.state) \(property.zipCode)")
+        if let estimatePrice = trend?.estimatePrice {
+            _estimatePrice = State(initialValue: String(format: "%.0f", estimatePrice))
+        } else {
+            _estimatePrice = State(initialValue: "")
+        }
+        if let estimateRent = trend?.estimateRent {
+            _estimateRent = State(initialValue: String(format: "%.0f", estimateRent))
+        } else {
+            _estimateRent = State(initialValue: "")
+        }
+        if let yoyChangePct = trend?.yoyChangePct {
+            _yoyChangePct = State(initialValue: String(format: "%.1f", yoyChangePct))
+        } else {
+            _yoyChangePct = State(initialValue: "")
+        }
+        _demandLevel = State(initialValue: trend?.demandLevel ?? "normal")
+        _source = State(initialValue: trend?.source ?? "")
+        _sourceURL = State(initialValue: trend?.sourceURL ?? "")
+        _notes = State(initialValue: trend?.notes ?? "")
+        _observedAt = State(initialValue: trend?.observedDate ?? Date())
+    }
+
+    private var isEditing: Bool { trend != nil }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Theme.Colors.background
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.system(size: 13))
+                                .foregroundColor(Theme.Colors.alertRed)
+                        }
+
+                        TextField("Title", text: $title)
+                            .textFieldStyle(.roundedBorder)
+
+                        Picker("Type", selection: $marketType) {
+                            Text("Area Trend").tag("areaTrend")
+                            Text("Property Value").tag("propertyValue")
+                            Text("Rent Comps").tag("rentComps")
+                            Text("Demand").tag("demand")
+                        }
+                        .pickerStyle(.segmented)
+
+                        TextField("Area / ZIP", text: $areaLabel)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("Estimated Value", text: $estimatePrice)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+
+                        TextField("Estimated Rent", text: $estimateRent)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+
+                        TextField("YoY Change %", text: $yoyChangePct)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.decimalPad)
+
+                        Picker("Demand", selection: $demandLevel) {
+                            Text("Low").tag("low")
+                            Text("Normal").tag("normal")
+                            Text("High").tag("high")
+                        }
+                        .pickerStyle(.segmented)
+
+                        DatePicker("Observed", selection: $observedAt, displayedComponents: .date)
+
+                        TextField("Source", text: $source)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Source URL", text: $sourceURL)
+                            .textFieldStyle(.roundedBorder)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                        TextField("Notes", text: $notes)
+                            .textFieldStyle(.roundedBorder)
+
+                        if isEditing {
+                            Button(role: .destructive) {
+                                showDeleteConfirm = true
+                            } label: {
+                                Text("Delete Snapshot")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .padding(.top, Theme.Spacing.sm)
+                        }
+                    }
+                    .padding(Theme.Spacing.md)
+                }
+            }
+            .navigationTitle(isEditing ? "Edit Market" : "Add Market")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Theme.Colors.slate400)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        Task { await save() }
+                    }
+                    .disabled(isSaving)
+                    .foregroundColor(Theme.Colors.emerald)
+                }
+            }
+            .alert("Delete Market Snapshot?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) { Task { await remove() } }
+                Button("Cancel", role: .cancel) {}
+            }
+        }
+    }
+
+    private func save() async {
+        guard !isSaving else { return }
+        isSaving = true
+        errorMessage = nil
+
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else {
+            errorMessage = "Title is required."
+            isSaving = false
+            return
+        }
+
+        do {
+            if let trend {
+                let input = ConvexMarketTrendUpdateInput(
+                    id: trend.id,
+                    title: cleanTitle,
+                    marketType: marketType,
+                    areaLabel: areaLabel.trimmingCharacters(in: .whitespacesAndNewlines),
+                    estimatePrice: parseNumber(estimatePrice),
+                    estimateRent: parseNumber(estimateRent),
+                    yoyChangePct: parseNumber(yoyChangePct),
+                    demandLevel: demandLevel,
+                    source: source.trimmedNil,
+                    sourceURL: sourceURL.trimmedNil,
+                    notes: notes.trimmedNil,
+                    observedAt: observedAt
+                )
+                _ = try await dataService.updateMarketTrend(input)
+            } else {
+                let input = ConvexMarketTrendInput(
+                    propertyId: property.id,
+                    title: cleanTitle,
+                    marketType: marketType,
+                    areaLabel: areaLabel.trimmingCharacters(in: .whitespacesAndNewlines),
+                    estimatePrice: parseNumber(estimatePrice),
+                    estimateRent: parseNumber(estimateRent),
+                    yoyChangePct: parseNumber(yoyChangePct),
+                    demandLevel: demandLevel,
+                    source: source.trimmedNil,
+                    sourceURL: sourceURL.trimmedNil,
+                    notes: notes.trimmedNil,
+                    observedAt: observedAt
+                )
+                _ = try await dataService.createMarketTrend(input)
+            }
+
+            await dataService.loadAllData()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isSaving = false
+    }
+
+    private func remove() async {
+        guard let trend else { return }
+        do {
+            try await dataService.deleteMarketTrend(id: trend.id)
+            await dataService.loadAllData()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func parseNumber(_ value: String) -> Double? {
+        let cleaned = value.filter { "0123456789.-".contains($0) }
+        guard !cleaned.isEmpty else { return nil }
+        return Double(cleaned)
+    }
+}
+
+private extension String {
+    var trimmedNil: String? {
+        let value = trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
     }
 }
 

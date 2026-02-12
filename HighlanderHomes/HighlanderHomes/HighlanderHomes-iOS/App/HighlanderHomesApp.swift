@@ -2,11 +2,44 @@ import SwiftUI
 import SwiftData
 import Combine
 
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.stars.fill"
+        }
+    }
+
+    var colorScheme: ColorScheme {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 @main
 struct HighlanderHomesApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var convexAuth = ConvexAuth.shared
     @StateObject private var dataService = ConvexDataService.shared
+    @AppStorage("app_appearance") private var appAppearanceRaw: String = AppAppearance.light.rawValue
+
+    private var appAppearance: AppAppearance {
+        AppAppearance(rawValue: appAppearanceRaw) ?? .light
+    }
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -37,7 +70,7 @@ struct HighlanderHomesApp: App {
                 .environmentObject(appState)
                 .environmentObject(convexAuth)
                 .environmentObject(dataService)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(appAppearance.colorScheme)
                 .onAppear {
                     // Configure DataService with model context for local caching
                     dataService.configure(with: sharedModelContainer.mainContext)

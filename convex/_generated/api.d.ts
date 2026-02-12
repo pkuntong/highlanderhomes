@@ -16,6 +16,7 @@ import type * as feedEvents from "../feedEvents.js";
 import type * as insurancePolicies from "../insurancePolicies.js";
 import type * as limits from "../limits.js";
 import type * as maintenanceRequests from "../maintenanceRequests.js";
+import type * as marketTrends from "../marketTrends.js";
 import type * as migrations from "../migrations.js";
 import type * as properties from "../properties.js";
 import type * as rentPayments from "../rentPayments.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   insurancePolicies: typeof insurancePolicies;
   limits: typeof limits;
   maintenanceRequests: typeof maintenanceRequests;
+  marketTrends: typeof marketTrends;
   migrations: typeof migrations;
   properties: typeof properties;
   rentPayments: typeof rentPayments;

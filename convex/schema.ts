@@ -186,6 +186,28 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_property", ["propertyId"]),
 
+  // Market Trends table (manual snapshots for pricing/rent tracking)
+  marketTrends: defineTable({
+    userId: v.id("users"),
+    propertyId: v.optional(v.id("properties")),
+    title: v.string(),
+    marketType: v.string(), // "propertyValue", "rentComps", "areaTrend", "demand"
+    areaLabel: v.string(), // City/ZIP/neighborhood label
+    estimatePrice: v.optional(v.number()),
+    estimateRent: v.optional(v.number()),
+    yoyChangePct: v.optional(v.number()),
+    demandLevel: v.optional(v.string()), // "low", "normal", "high"
+    source: v.optional(v.string()),
+    sourceURL: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    observedAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_property", ["propertyId"])
+    .index("by_user_observed", ["userId", "observedAt"]),
+
   // Feed Events table (activity feed)
   feedEvents: defineTable({
     eventType: v.string(), // "maintenanceNew", "rentReceived", etc.
