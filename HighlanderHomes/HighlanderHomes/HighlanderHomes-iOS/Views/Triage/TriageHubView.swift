@@ -5,13 +5,52 @@ struct TriageHubView: View {
     @EnvironmentObject var dataService: ConvexDataService
     @EnvironmentObject var appState: AppState
 
+    private enum ViewMode: String {
+        case active
+        case history
+    }
+
     @State private var selectedRequest: ConvexMaintenanceRequest?
     @State private var showingNewRequest = false
     @State private var filterStatus: String?
+    @State private var viewMode: ViewMode = .active
 
     private var activeRequests: [ConvexMaintenanceRequest] {
         dataService.maintenanceRequests.filter {
             $0.status != "completed" && $0.status != "cancelled"
+        }
+    }
+
+    private var historyRequests: [ConvexMaintenanceRequest] {
+        dataService.maintenanceRequests.filter {
+            $0.status == "completed" || $0.status == "cancelled"
+        }
+    }
+
+    private var headerCountText: String {
+        switch viewMode {
+        case .active:
+            return "\(activeRequests.count) active requests"
+        case .history:
+            return "\(historyRequests.count) past requests"
+        }
+    }
+
+    private var filterStatuses: [(key: String, label: String)] {
+        switch viewMode {
+        case .active:
+            return [
+                ("new", "New"),
+                ("acknowledged", "Acknowledged"),
+                ("scheduled", "Scheduled"),
+                ("inProgress", "In Progress"),
+                ("awaitingParts", "Awaiting Parts"),
+            ]
+        case .history:
+            return [
+                ("completed", "Completed"),
+                ("cancelled", "Cancelled"),
+            ]
         }
     }
 
@@ -24,12 +63,37 @@ struct TriageHubView: View {
                 VStack(spacing: 0) {
                     // Header
                     TriageHeader(
-                        activeCount: activeRequests.count,
+                        countText: headerCountText,
                         showingNewRequest: $showingNewRequest
                     )
 
+                    // Active / History toggle
+                    HStack(spacing: 10) {
+                        FilterPill(
+                            label: "Active",
+                            isSelected: viewMode == .active,
+                            color: Theme.Colors.emerald
+                        ) {
+                            viewMode = .active
+                            filterStatus = nil
+                        }
+
+                        FilterPill(
+                            label: "History",
+                            isSelected: viewMode == .history,
+                            color: Theme.Colors.slate600
+                        ) {
+                            viewMode = .history
+                            filterStatus = nil
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.bottom, Theme.Spacing.xs)
+
                     // Status Filter Pills
-                    ConvexStatusFilterBar(selectedStatus: $filterStatus)
+                    ConvexStatusFilterBar(selectedStatus: $filterStatus, statuses: filterStatuses)
                         .padding(.vertical, Theme.Spacing.sm)
 
                     // Loading indicator
@@ -41,7 +105,7 @@ struct TriageHubView: View {
 
                     // Requests List
                     if filteredRequests.isEmpty && !dataService.isLoading {
-                        EmptyTriageView()
+                        EmptyTriageView(isHistory: viewMode == .history)
                     } else if !filteredRequests.isEmpty {
                         ScrollView {
                             LazyVStack(spacing: Theme.Spacing.md) {
@@ -60,7 +124,7 @@ struct TriageHubView: View {
                 }
             }
             .sheet(item: $selectedRequest) { request in
-                ConvexTriageDetailView(request: request)
+                ConvexTriageDetailView(requestId: request.id)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
@@ -81,16 +145,24 @@ struct TriageHubView: View {
     }
 
     private var filteredRequests: [ConvexMaintenanceRequest] {
-        if let status = filterStatus {
-            return activeRequests.filter { $0.status == status }
+        let base: [ConvexMaintenanceRequest]
+        switch viewMode {
+        case .active:
+            base = activeRequests
+        case .history:
+            base = historyRequests
         }
-        return activeRequests
+
+        if let status = filterStatus {
+            return base.filter { $0.status == status }
+        }
+        return base
     }
 }
 
 // MARK: - Triage Header
 struct TriageHeader: View {
-    let activeCount: Int
+    let countText: String
     @Binding var showingNewRequest: Bool
 
     var body: some View {
@@ -100,7 +172,7 @@ struct TriageHeader: View {
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(Theme.Colors.textPrimary)
 
-                Text("\(activeCount) active requests")
+                Text(countText)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(Theme.Colors.textSecondary)
             }
@@ -124,12 +196,7 @@ struct TriageHeader: View {
 // MARK: - Convex Status Filter Bar
 struct ConvexStatusFilterBar: View {
     @Binding var selectedStatus: String?
-    let statuses: [(key: String, label: String)] = [
-        ("new", "New"),
-        ("acknowledged", "Acknowledged"),
-        ("scheduled", "Scheduled"),
-        ("inProgress", "In Progress")
-    ]
+    let statuses: [(key: String, label: String)]
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -415,19 +482,21 @@ struct QuickActionButton: View {
 
 // MARK: - Empty Triage View
 struct EmptyTriageView: View {
+    let isHistory: Bool
+
     var body: some View {
         VStack(spacing: Theme.Spacing.lg) {
             Spacer()
 
-            Image(systemName: "checkmark.seal.fill")
+            Image(systemName: isHistory ? "clock.arrow.circlepath" : "checkmark.seal.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(Theme.Gradients.emeraldGlow)
 
-            Text("All Clear!")
+            Text(isHistory ? "No History Yet" : "All Clear!")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(Theme.Colors.textPrimary)
 
-            Text("No active maintenance requests.\nYour properties are running smoothly.")
+            Text(isHistory ? "Completed requests will show up here for easy reference." : "No active maintenance requests.\nYour properties are running smoothly.")
                 .font(.system(size: 16))
                 .foregroundColor(Theme.Colors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -439,9 +508,13 @@ struct EmptyTriageView: View {
 
 // MARK: - Convex Triage Detail View
 struct ConvexTriageDetailView: View {
-    let request: ConvexMaintenanceRequest
+    let requestId: String
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataService: ConvexDataService
+
+    private var request: ConvexMaintenanceRequest? {
+        dataService.maintenanceRequests.first { $0.id == requestId }
+    }
 
     var body: some View {
         NavigationStack {
@@ -449,21 +522,38 @@ struct ConvexTriageDetailView: View {
                 Theme.Colors.background
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                        // Header Card
-                        ConvexDetailHeaderCard(request: request)
+                if let request {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                            // Header Card
+                            ConvexDetailHeaderCard(request: request)
 
-                        // Workflow Steps
-                        ConvexTriageWorkflowView(request: request)
+                            // Workflow Steps
+                            ConvexTriageWorkflowView(requestId: requestId)
 
-                        // Communication Timeline
-                        ConvexCommunicationTimeline(request: request)
+                            // Communication Timeline
+                            ConvexCommunicationTimeline(request: request)
+                        }
+                        .padding(Theme.Spacing.md)
                     }
-                    .padding(Theme.Spacing.md)
+                } else {
+                    VStack(spacing: Theme.Spacing.md) {
+                        Spacer()
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(Theme.Colors.warningAmber)
+                        Text("Request not found")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(Theme.Colors.textPrimary)
+                        Text("It may have been removed or is still syncing.")
+                            .font(.system(size: 13))
+                            .foregroundColor(Theme.Colors.textSecondary)
+                        Spacer()
+                    }
+                    .padding(Theme.Spacing.lg)
                 }
             }
-            .navigationTitle(request.title)
+            .navigationTitle(request?.title ?? "Maintenance")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -538,12 +628,29 @@ struct ConvexDetailHeaderCard: View {
 
 // MARK: - Convex Triage Workflow View (3-way communication hub)
 struct ConvexTriageWorkflowView: View {
-    let request: ConvexMaintenanceRequest
+    let requestId: String
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataService: ConvexDataService
-    @State private var currentStep: Int = 0
+
     @State private var showingContractorPicker = false
     @State private var isWorking = false
     @State private var errorMessage: String?
+
+    private var request: ConvexMaintenanceRequest? {
+        dataService.maintenanceRequests.first { $0.id == requestId }
+    }
+
+    private var isAssigned: Bool { request?.contractorId != nil }
+    private var isScheduled: Bool {
+        guard let status = request?.status else { return false }
+        return ["scheduled", "inProgress", "awaitingParts", "completed"].contains(status)
+    }
+    private var isTenantNotified: Bool {
+        guard let status = request?.status else { return false }
+        return ["inProgress", "awaitingParts", "completed"].contains(status)
+    }
+    private var isCompleted: Bool { request?.status == "completed" }
+    private var isCancelled: Bool { request?.status == "cancelled" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -551,128 +658,156 @@ struct ConvexTriageWorkflowView: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(Theme.Colors.textPrimary)
 
-            VStack(spacing: 0) {
-                WorkflowStep(
-                    step: 1,
-                    title: "Request Received",
-                    subtitle: "Tenant submitted maintenance request",
-                    icon: "bell.badge.fill",
-                    isCompleted: true,
-                    isCurrent: currentStep == 0
-                )
+            if let request {
+                VStack(spacing: 0) {
+                    WorkflowStep(
+                        step: 1,
+                        title: "Request Received",
+                        subtitle: "Tenant submitted maintenance request",
+                        icon: "bell.badge.fill",
+                        isCompleted: true,
+                        isCurrent: false
+                    )
 
-                WorkflowConnector(isCompleted: currentStep > 0)
+                    WorkflowConnector(isCompleted: true)
 
-                WorkflowStep(
-                    step: 2,
-                    title: "Send to Contractor",
-                    subtitle: "Assign and notify a contractor",
-                    icon: "arrow.right.circle.fill",
-                    isCompleted: currentStep > 0,
-                    isCurrent: currentStep == 1,
-                    actionLabel: currentStep == 1 ? "Assign Now" : nil
-                ) {
-                    showingContractorPicker = true
+                    WorkflowStep(
+                        step: 2,
+                        title: "Send to Contractor",
+                        subtitle: "Assign and notify a contractor",
+                        icon: "arrow.right.circle.fill",
+                        isCompleted: isAssigned,
+                        isCurrent: !isAssigned && !isCompleted && !isCancelled,
+                        actionLabel: (!isAssigned && !isCompleted && !isCancelled) ? "Assign Now" : nil
+                    ) {
+                        showingContractorPicker = true
+                    }
+
+                    WorkflowConnector(isCompleted: isAssigned)
+
+                    WorkflowStep(
+                        step: 3,
+                        title: "Contractor Schedules",
+                        subtitle: "Confirm appointment time",
+                        icon: "calendar.badge.clock",
+                        isCompleted: isScheduled,
+                        isCurrent: isAssigned && !isScheduled && !isCompleted && !isCancelled,
+                        actionLabel: (isAssigned && !isScheduled && !isCompleted && !isCancelled) ? "Mark Scheduled" : nil
+                    ) {
+                        Task { await markScheduled(requestId: request.id) }
+                    }
+
+                    WorkflowConnector(isCompleted: isScheduled)
+
+                    WorkflowStep(
+                        step: 4,
+                        title: "Tenant Notified",
+                        subtitle: "Update sent to tenant",
+                        icon: "person.fill.checkmark",
+                        isCompleted: isTenantNotified,
+                        isCurrent: isScheduled && !isTenantNotified && !isCompleted && !isCancelled,
+                        actionLabel: (isScheduled && !isTenantNotified && !isCompleted && !isCancelled) ? "Notify Tenant" : nil
+                    ) {
+                        Task { await notifyTenant(requestId: request.id) }
+                    }
+
+                    WorkflowConnector(isCompleted: isTenantNotified)
+
+                    WorkflowStep(
+                        step: 5,
+                        title: isCancelled ? "Cancelled" : "Completed",
+                        subtitle: isCancelled ? "Request was cancelled" : "Mark the work as complete",
+                        icon: isCancelled ? "xmark.circle.fill" : "checkmark.seal.fill",
+                        isCompleted: isCompleted || isCancelled,
+                        isCurrent: isTenantNotified && !isCompleted && !isCancelled,
+                        actionLabel: (isTenantNotified && !isCompleted && !isCancelled) ? "Mark Complete" : nil
+                    ) {
+                        Task { await markComplete(requestId: request.id) }
+                    }
                 }
+            } else {
+                Text("Workflow unavailable while syncing.")
+                    .font(.system(size: 13))
+                    .foregroundColor(Theme.Colors.textMuted)
+            }
 
-                WorkflowConnector(isCompleted: currentStep > 1)
-
-                WorkflowStep(
-                    step: 3,
-                    title: "Contractor Schedules",
-                    subtitle: "Contractor confirms appointment time",
-                    icon: "calendar.badge.clock",
-                    isCompleted: currentStep > 1,
-                    isCurrent: currentStep == 2,
-                    actionLabel: currentStep == 2 ? "Mark Scheduled" : nil
-                ) {
-                    Task { await markScheduled() }
-                }
-
-                WorkflowConnector(isCompleted: currentStep > 2)
-
-                WorkflowStep(
-                    step: 4,
-                    title: "Tenant Notified",
-                    subtitle: "Automatic update sent to tenant",
-                    icon: "person.fill.checkmark",
-                    isCompleted: currentStep > 2,
-                    isCurrent: currentStep == 3,
-                    actionLabel: currentStep == 3 ? "Notify Tenant" : nil
-                ) {
-                    Task { await notifyTenant() }
-                }
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 12))
+                    .foregroundColor(Theme.Colors.alertRed)
             }
         }
         .padding(Theme.Spacing.lg)
         .cardStyle()
-        .onAppear {
-            // Set initial step based on request status
-            switch request.status {
-            case "new": currentStep = 1
-            case "acknowledged": currentStep = 2
-            case "scheduled": currentStep = 3
-            case "inProgress": currentStep = 4
-            case "awaitingParts": currentStep = 4
-            case "completed": currentStep = 4
-            case "cancelled": currentStep = 4
-            default: currentStep = 1
-            }
-        }
         .sheet(isPresented: $showingContractorPicker) {
             ContractorPickerSheet(
                 contractors: dataService.contractors,
                 onSelect: { contractor in
-                    Task { await assignContractor(contractor) }
+                    Task { await assignContractor(contractor, requestId: requestId) }
                 }
             )
         }
     }
 
-    private func assignContractor(_ contractor: ConvexContractor) async {
+    private func assignContractor(_ contractor: ConvexContractor, requestId: String) async {
         guard !isWorking else { return }
         isWorking = true
         errorMessage = nil
         do {
-            try await dataService.assignContractor(requestId: request.id, contractorId: contractor.id)
+            try await dataService.assignContractor(requestId: requestId, contractorId: contractor.id)
             await dataService.loadAllData()
-            withAnimation(.spring(response: 0.4)) {
-                currentStep = 2
-            }
+            HapticManager.shared.success()
         } catch {
             errorMessage = error.localizedDescription
+            HapticManager.shared.error()
         }
         isWorking = false
     }
 
-    private func markScheduled() async {
+    private func markScheduled(requestId: String) async {
         guard !isWorking else { return }
         isWorking = true
         errorMessage = nil
         do {
-            try await dataService.updateMaintenanceStatus(id: request.id, status: "scheduled")
+            try await dataService.updateMaintenanceStatus(id: requestId, status: "scheduled")
             await dataService.loadAllData()
-            withAnimation(.spring(response: 0.4)) {
-                currentStep = 3
-            }
+            HapticManager.shared.success()
         } catch {
             errorMessage = error.localizedDescription
+            HapticManager.shared.error()
         }
         isWorking = false
     }
 
-    private func notifyTenant() async {
+    private func notifyTenant(requestId: String) async {
         guard !isWorking else { return }
         isWorking = true
         errorMessage = nil
         do {
-            try await dataService.updateMaintenanceStatus(id: request.id, status: "inProgress")
+            try await dataService.updateMaintenanceStatus(id: requestId, status: "inProgress")
             await dataService.loadAllData()
-            withAnimation(.spring(response: 0.4)) {
-                currentStep = 4
-            }
+            HapticManager.shared.success()
         } catch {
             errorMessage = error.localizedDescription
+            HapticManager.shared.error()
+        }
+        isWorking = false
+    }
+
+    private func markComplete(requestId: String) async {
+        guard !isWorking else { return }
+        isWorking = true
+        errorMessage = nil
+        do {
+            try await dataService.updateMaintenanceStatus(id: requestId, status: "completed")
+            await dataService.loadAllData()
+            HapticManager.shared.success()
+
+            // Immediately return to the list so the completed item disappears from Active.
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            HapticManager.shared.error()
         }
         isWorking = false
     }

@@ -36,7 +36,10 @@ struct DashboardView: View {
                         KeyMetricsRow(
                             totalRevenue: dataService.totalMonthlyRevenue,
                             occupancyRate: dataService.occupancyRate,
-                            pendingMaintenance: dataService.pendingMaintenanceCount
+                            pendingMaintenance: dataService.pendingMaintenanceCount,
+                            onTapRevenue: { appState.selectedTab = .finances },
+                            onTapOccupancy: { appState.selectedTab = .properties },
+                            onTapPending: { appState.selectedTab = .maintenance }
                         )
 
                         // Quick Actions
@@ -55,15 +58,27 @@ struct DashboardView: View {
                     .padding(Theme.Spacing.md)
                     .padding(.bottom, 100)
                 }
+
+                if dataService.isLoading {
+                    VStack {
+                        DashboardRefreshBanner()
+                            .padding(.top, 8)
+                        Spacer()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            .animation(.easeInOut(duration: 0.2), value: dataService.isLoading)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     HStack(spacing: 10) {
                         Menu {
-                            Button("Refresh Data") {
+                            Button(dataService.isLoading ? "Refreshing..." : "Refresh Data") {
+                                HapticManager.shared.impact(.light)
                                 Task { await dataService.loadAllData() }
                             }
+                            .disabled(dataService.isLoading)
                             Button("Settings") {
                                 showingSettings = true
                             }
@@ -123,6 +138,31 @@ struct ProfileAvatarButton: View {
             }
         }
         .accessibilityLabel("Settings")
+    }
+}
+
+struct DashboardRefreshBanner: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            ProgressView()
+                .tint(.white)
+
+            Text("Refreshing data...")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Theme.Colors.slate900.opacity(0.92))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Theme.Colors.slate700.opacity(0.7), lineWidth: 1)
+                }
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .accessibilityLabel("Refreshing data")
     }
 }
 

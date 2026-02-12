@@ -729,23 +729,40 @@ struct PropertyRentStatusCard: View {
                     .foregroundColor(Theme.Colors.textMuted)
             } else {
                 ForEach(tenants) { tenant in
+                    let paymentToUndo = paymentForTenant(tenant)
                     TenantRentRow(
                         tenant: tenant,
-                        isPaid: isTenantPaid(tenant),
+                        paymentIdToUndo: paymentToUndo?.id,
                         onMarkPaid: {
                             Task {
-                                let input = ConvexRentPaymentInput(
-                                    propertyId: property.id,
-                                    tenantId: tenant.id,
-                                    amount: tenant.monthlyRent,
-                                    paymentDate: Date(),
-                                    paymentMethod: nil,
-                                    status: "completed",
-                                    transactionId: nil,
-                                    notes: nil
-                                )
-                                _ = try await dataService.createRentPayment(input)
-                                await dataService.loadAllData()
+                                do {
+                                    let input = ConvexRentPaymentInput(
+                                        propertyId: property.id,
+                                        tenantId: tenant.id,
+                                        amount: tenant.monthlyRent,
+                                        paymentDate: paymentDateForMarkPaid(),
+                                        paymentMethod: nil,
+                                        status: "completed",
+                                        transactionId: nil,
+                                        notes: nil
+                                    )
+                                    _ = try await dataService.createRentPayment(input)
+                                    await dataService.loadAllData()
+                                    HapticManager.shared.success()
+                                } catch {
+                                    HapticManager.shared.error()
+                                }
+                            }
+                        },
+                        onUndoPaid: { paymentId in
+                            Task {
+                                do {
+                                    try await dataService.deleteRentPayment(id: paymentId)
+                                    await dataService.loadAllData()
+                                    HapticManager.shared.success()
+                                } catch {
+                                    HapticManager.shared.error()
+                                }
                             }
                         }
                     )
@@ -765,18 +782,39 @@ struct PropertyRentStatusCard: View {
     }
 
     private func isTenantPaid(_ tenant: ConvexTenant) -> Bool {
-        payments.contains { payment in
-            guard payment.tenantId == tenant.id else { return false }
-            let date = payment.paymentDateValue
-            return date >= monthStart && date < monthEnd
+        paymentForTenant(tenant) != nil
+    }
+
+    private func paymentForTenant(_ tenant: ConvexTenant) -> ConvexRentPayment? {
+        payments
+            .filter { payment in
+                guard payment.tenantId == tenant.id else { return false }
+                let date = payment.paymentDateValue
+                return date >= monthStart && date < monthEnd
+            }
+            .sorted { $0.paymentDateValue > $1.paymentDateValue }
+            .first
+    }
+
+    private func paymentDateForMarkPaid() -> Date {
+        let now = Date()
+        if now < monthStart { return monthStart }
+        if now >= monthEnd {
+            return Calendar.current.date(byAdding: .second, value: -1, to: monthEnd) ?? monthStart
         }
+        return now
     }
 }
 
 struct TenantRentRow: View {
     let tenant: ConvexTenant
-    let isPaid: Bool
+    let paymentIdToUndo: String?
     let onMarkPaid: () -> Void
+    let onUndoPaid: (String) -> Void
+
+    @State private var showingUndoConfirm = false
+
+    private var isPaid: Bool { paymentIdToUndo != nil }
 
     var body: some View {
         HStack {
@@ -792,9 +830,17 @@ struct TenantRentRow: View {
             Spacer()
 
             if isPaid {
-                Label("Paid", systemImage: "checkmark.circle.fill")
+                HStack(spacing: 10) {
+                    Label("Paid", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Theme.Colors.emerald)
+
+                    Button("Undo") {
+                        showingUndoConfirm = true
+                    }
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Theme.Colors.emerald)
+                    .foregroundColor(Theme.Colors.textSecondary)
+                }
             } else {
                 Button {
                     onMarkPaid()
@@ -811,6 +857,16 @@ struct TenantRentRow: View {
             }
         }
         .padding(.vertical, 6)
+        .alert("Undo Payment?", isPresented: $showingUndoConfirm) {
+            Button("Undo", role: .destructive) {
+                if let id = paymentIdToUndo {
+                    onUndoPaid(id)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the rent payment record for this tenant for the selected month.")
+        }
     }
 }
 

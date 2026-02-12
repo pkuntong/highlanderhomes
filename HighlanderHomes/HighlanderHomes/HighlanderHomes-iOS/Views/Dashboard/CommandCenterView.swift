@@ -278,29 +278,83 @@ struct KeyMetricsRow: View {
     let totalRevenue: Double
     let occupancyRate: Double
     let pendingMaintenance: Int
+    var onTapRevenue: (() -> Void)? = nil
+    var onTapOccupancy: (() -> Void)? = nil
+    var onTapPending: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
-            MetricCard(
-                icon: "dollarsign.circle.fill",
-                label: "Monthly Revenue",
-                value: "$\(Int(totalRevenue).formatted())",
-                color: Theme.Colors.gold
-            )
+            Group {
+                if let onTapRevenue {
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        onTapRevenue()
+                    } label: {
+                        MetricCard(
+                            icon: "dollarsign.circle.fill",
+                            label: "Monthly Revenue",
+                            value: "$\(Int(totalRevenue).formatted())",
+                            color: Theme.Colors.gold
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    MetricCard(
+                        icon: "dollarsign.circle.fill",
+                        label: "Monthly Revenue",
+                        value: "$\(Int(totalRevenue).formatted())",
+                        color: Theme.Colors.gold
+                    )
+                }
+            }
 
-            MetricCard(
-                icon: "person.2.fill",
-                label: "Occupancy",
-                value: "\(Int(occupancyRate * 100))%",
-                color: Theme.Colors.emerald
-            )
+            Group {
+                if let onTapOccupancy {
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        onTapOccupancy()
+                    } label: {
+                        MetricCard(
+                            icon: "person.2.fill",
+                            label: "Occupancy",
+                            value: "\(Int(occupancyRate * 100))%",
+                            color: Theme.Colors.emerald
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    MetricCard(
+                        icon: "person.2.fill",
+                        label: "Occupancy",
+                        value: "\(Int(occupancyRate * 100))%",
+                        color: Theme.Colors.emerald
+                    )
+                }
+            }
 
-            MetricCard(
-                icon: "wrench.fill",
-                label: "Pending",
-                value: "\(pendingMaintenance)",
-                color: pendingMaintenance > 0 ? Theme.Colors.warningAmber : Theme.Colors.emerald
-            )
+            Group {
+                if let onTapPending {
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        onTapPending()
+                    } label: {
+                        MetricCard(
+                            icon: "wrench.fill",
+                            label: "Pending",
+                            value: "\(pendingMaintenance)",
+                            color: pendingMaintenance > 0 ? Theme.Colors.warningAmber : Theme.Colors.emerald
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    MetricCard(
+                        icon: "wrench.fill",
+                        label: "Pending",
+                        value: "\(pendingMaintenance)",
+                        color: pendingMaintenance > 0 ? Theme.Colors.warningAmber : Theme.Colors.emerald
+                    )
+                }
+            }
         }
     }
 }
