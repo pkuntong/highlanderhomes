@@ -6,7 +6,7 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Main Content — standard TabView (no .page style)
+            // Main Content — swipeable TabView (page style) with custom tab bar
             TabView(selection: $appState.selectedTab) {
                 DashboardView()
                     .tag(AppState.Tab.dashboard)
@@ -20,6 +20,7 @@ struct ContentView: View {
                 FinancesView()
                     .tag(AppState.Tab.finances)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
 
             // Custom Tab Bar
             if !appState.isModalPresented {

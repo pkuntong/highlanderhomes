@@ -10,10 +10,21 @@ struct TriageHubView: View {
         case history
     }
 
+    private struct CompletedUndo: Identifiable {
+        let id = UUID()
+        let requestId: String
+        let previousStatus: String
+
+        var message: String { "Marked maintenance complete" }
+    }
+
     @State private var selectedRequest: ConvexMaintenanceRequest?
     @State private var showingNewRequest = false
     @State private var filterStatus: String?
     @State private var viewMode: ViewMode = .active
+    @State private var pendingCompletedUndo: CompletedUndo?
+    @State private var showCompletedUndoBanner = false
+    @State private var completedUndoToken = UUID()
 
     private var activeRequests: [ConvexMaintenanceRequest] {
         dataService.maintenanceRequests.filter {
@@ -123,8 +134,34 @@ struct TriageHubView: View {
                     }
                 }
             }
+            .overlay(alignment: .bottom) {
+                if showCompletedUndoBanner, let pendingCompletedUndo {
+                    UndoBanner(message: pendingCompletedUndo.message) {
+                        Task { await undoMarkComplete(pendingCompletedUndo) }
+                    }
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.bottom, 110)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .task(id: completedUndoToken) {
+                guard showCompletedUndoBanner else { return }
+                try? await Task.sleep(nanoseconds: 7_000_000_000)
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showCompletedUndoBanner = false
+                    }
+                    pendingCompletedUndo = nil
+                }
+            }
             .sheet(item: $selectedRequest) { request in
-                ConvexTriageDetailView(requestId: request.id)
+                ConvexTriageDetailView(
+                    requestId: request.id,
+                    onMarkedComplete: { requestId, previousStatus in
+                        presentMarkCompleteUndo(requestId: requestId, previousStatus: previousStatus)
+                    }
+                )
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             }
@@ -157,6 +194,32 @@ struct TriageHubView: View {
             return base.filter { $0.status == status }
         }
         return base
+    }
+
+    private func presentMarkCompleteUndo(requestId: String, previousStatus: String) {
+        // If this came from "inProgress" we can safely restore it. If it's already in a terminal status,
+        // fall back to "inProgress" so Undo behaves as expected.
+        let restoredStatus = (previousStatus == "completed" || previousStatus == "cancelled") ? "inProgress" : previousStatus
+        pendingCompletedUndo = CompletedUndo(requestId: requestId, previousStatus: restoredStatus)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showCompletedUndoBanner = true
+        }
+        completedUndoToken = UUID()
+    }
+
+    private func undoMarkComplete(_ undo: CompletedUndo) async {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showCompletedUndoBanner = false
+        }
+        pendingCompletedUndo = nil
+
+        do {
+            try await dataService.updateMaintenanceStatus(id: undo.requestId, status: undo.previousStatus)
+            await dataService.loadAllData()
+            HapticManager.shared.success()
+        } catch {
+            HapticManager.shared.error()
+        }
     }
 }
 
@@ -509,6 +572,7 @@ struct EmptyTriageView: View {
 // MARK: - Convex Triage Detail View
 struct ConvexTriageDetailView: View {
     let requestId: String
+    var onMarkedComplete: ((String, String) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataService: ConvexDataService
 
@@ -529,7 +593,7 @@ struct ConvexTriageDetailView: View {
                             ConvexDetailHeaderCard(request: request)
 
                             // Workflow Steps
-                            ConvexTriageWorkflowView(requestId: requestId)
+                            ConvexTriageWorkflowView(requestId: requestId, onMarkedComplete: onMarkedComplete)
 
                             // Communication Timeline
                             ConvexCommunicationTimeline(request: request)
@@ -629,6 +693,7 @@ struct ConvexDetailHeaderCard: View {
 // MARK: - Convex Triage Workflow View (3-way communication hub)
 struct ConvexTriageWorkflowView: View {
     let requestId: String
+    var onMarkedComplete: ((String, String) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataService: ConvexDataService
 
@@ -799,9 +864,12 @@ struct ConvexTriageWorkflowView: View {
         isWorking = true
         errorMessage = nil
         do {
+            let previousStatus = request?.status ?? "inProgress"
             try await dataService.updateMaintenanceStatus(id: requestId, status: "completed")
             await dataService.loadAllData()
             HapticManager.shared.success()
+
+            onMarkedComplete?(requestId, previousStatus)
 
             // Immediately return to the list so the completed item disappears from Active.
             dismiss()

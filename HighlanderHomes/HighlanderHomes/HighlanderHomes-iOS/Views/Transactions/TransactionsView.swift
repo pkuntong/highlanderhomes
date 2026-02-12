@@ -467,6 +467,18 @@ struct FilterBar: View {
     let properties: [ConvexProperty]
     let categories: [String]
 
+    private let columns: [GridItem] = [
+        GridItem(.flexible(), spacing: Theme.Spacing.sm),
+        GridItem(.flexible(), spacing: Theme.Spacing.sm),
+    ]
+
+    private var isDefaultFilters: Bool {
+        selectedPropertyId == "all" &&
+        selectedCategory == "all" &&
+        selectedType == .all &&
+        selectedRange == .month
+    }
+
     private var propertyLabel: String {
         if selectedPropertyId == "all" {
             return "All Properties"
@@ -482,8 +494,28 @@ struct FilterBar: View {
     }
 
     var body: some View {
-        VStack(spacing: Theme.Spacing.sm) {
-            HStack(spacing: Theme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack {
+                Text("Filters")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Theme.Colors.textSecondary)
+
+                Spacer()
+
+                if !isDefaultFilters {
+                    Button("Reset") {
+                        HapticManager.shared.selection()
+                        selectedPropertyId = "all"
+                        selectedCategory = "all"
+                        selectedType = .all
+                        selectedRange = .month
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Theme.Colors.emerald)
+                }
+            }
+
+            LazyVGrid(columns: columns, spacing: Theme.Spacing.sm) {
                 Menu {
                     Button("All Properties") { selectedPropertyId = "all" }
                     ForEach(properties) { property in
@@ -501,9 +533,7 @@ struct FilterBar: View {
                 } label: {
                     TransactionFilterPill(icon: "tag.fill", label: categoryLabel)
                 }
-            }
 
-            HStack(spacing: Theme.Spacing.sm) {
                 Menu {
                     ForEach(DateRangeFilter.allCases) { range in
                         Button(range.rawValue) { selectedRange = range }
@@ -512,15 +542,17 @@ struct FilterBar: View {
                     TransactionFilterPill(icon: "calendar", label: selectedRange.rawValue)
                 }
 
-                Picker("Type", selection: $selectedType) {
+                Menu {
                     ForEach(TransactionTypeFilter.allCases) { type in
-                        Text(type.label).tag(type)
+                        Button(type.label) { selectedType = type }
                     }
+                } label: {
+                    TransactionFilterPill(icon: "arrow.up.arrow.down.circle", label: selectedType.label)
                 }
-                .pickerStyle(.segmented)
-                .tint(Theme.Colors.emerald)
             }
         }
+        .padding(Theme.Spacing.lg)
+        .cardStyle()
     }
 }
 
@@ -535,11 +567,14 @@ struct TransactionFilterPill: View {
             Text(label)
                 .font(.system(size: 12, weight: .semibold))
                 .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
             Image(systemName: "chevron.down")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(Theme.Colors.textMuted)
         }
         .foregroundColor(Theme.Colors.textPrimary)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background {
