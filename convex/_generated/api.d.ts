@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as authInternal from "../authInternal.js";
 import type * as contractors from "../contractors.js";
+import type * as documents from "../documents.js";
 import type * as expenses from "../expenses.js";
 import type * as feedEvents from "../feedEvents.js";
 import type * as insurancePolicies from "../insurancePolicies.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authInternal: typeof authInternal;
   contractors: typeof contractors;
+  documents: typeof documents;
   expenses: typeof expenses;
   feedEvents: typeof feedEvents;
   insurancePolicies: typeof insurancePolicies;

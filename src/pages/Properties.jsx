@@ -1,722 +1,358 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Edit3, Search } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Building, Plus, Edit, Trash2, Download, Square, CheckSquare, Eye } from "lucide-react";
-import PropertyFilters from "@/components/properties/PropertyFilters";
-import BulkActions from "@/components/properties/BulkActions";
-import PropertyDetailsDialog from "@/components/properties/PropertyDetailsDialog";
-import { db } from "@/firebase";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  getDoc,
-  setDoc
-} from "firebase/firestore";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { listProperties, listTenants, updateProperty } from "@/services/dataService";
+import { formatCurrency } from "@/lib/format";
 
-const emptyProperty = {
-  address: "",
-  city: "",
-  state: "",
-  zipCode: "",
-  yearBuilt: '',
-  squareFootage: '',
-  bedrooms: '',
-  fullBathrooms: '',
-  halfBathrooms: '',
-  leaseType: "Annual",
-  monthlyRent: '',
-  status: "vacant",
-  paymentStatus: 'pending',
-  description: "",
-  imageUrl: "/placeholder.svg",
-  imageBase64: '',
-};
+function parseNumber(value) {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+  const next = Number(value);
+  return Number.isFinite(next) ? next : undefined;
+}
 
-const Properties = () => {
+export default function Properties() {
+  const { currentUser } = useAuth();
+  const userId = currentUser?._id;
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState("all");
-  const [cityFilter, setCityFilter] = useState("all");
-  const [rentRange, setRentRange] = useState([0, 10000]);
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
-  const [form, setForm] = useState(emptyProperty);
-  const [deleteErrorIndex, setDeleteErrorIndex] = useState(null);
-  const [selectedProperties, setSelectedProperties] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [form, setForm] = useState({});
 
-  // Function to remove duplicate properties with the same address
-  const cleanupDuplicateProperties = async () => {
-    console.log('Running duplicate property cleanup...');
-    try {
-      // Get all properties from Firestore
-      const querySnapshot = await getDocs(collection(db, "properties"));
-      
-      // Group properties by address to find duplicates
-      const addressMap = {};
-      const duplicates = [];
-      
-      querySnapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const id = docSnap.id;
-        const address = data.address;
-        
-        if (address) {
-          // If we've seen this address before, we have a duplicate
-          if (addressMap[address]) {
-            // Keep the one with the more recent lastUpdated timestamp
-            const existing = addressMap[address];
-            const existingTimestamp = existing.data.lastUpdated || '1900-01-01';
-            const currentTimestamp = data.lastUpdated || '1900-01-01';
-            
-            if (currentTimestamp > existingTimestamp) {
-              // This one is newer, so the existing one is the duplicate
-              duplicates.push(existing.id);
-              addressMap[address] = { id, data };
-            } else {
-              // Existing one is newer, so this is the duplicate
-              duplicates.push(id);
-            }
-          } else {
-            // First time seeing this address
-            addressMap[address] = { id, data };
-          }
-        }
-      });
-      
-      // Delete duplicates
-      if (duplicates.length > 0) {
-        console.log(`Found ${duplicates.length} duplicate properties to clean up:`);
-        console.log(duplicates);
-        
-        for (const dupId of duplicates) {
-          console.log(`Deleting duplicate property ${dupId}`);
-          await deleteDoc(doc(db, "properties", dupId));
-        }
-        
-        return true; // Return true if we cleaned up something
-      } else {
-        console.log('No duplicate properties found.');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error cleaning up duplicate properties:', error);
-      return false;
-    }
-  };
-  
-  // Fetch properties from Firestore on mount
-  useEffect(() => {
-    async function fetchProperties() {
-      setLoading(true);
-      console.log('Fetching latest properties data from Firestore...');
-      try {
-        // Force a fresh query from Firestore
-        const querySnapshot = await getDocs(collection(db, "properties"));
-        
-        // Process the results
-        const props = querySnapshot.docs.map(docSnap => {
-          const data = docSnap.data();
-          return { id: docSnap.id, ...data };
-        });
-        
-        console.log('Fetched', props.length, 'properties:', props);
-        
-        // Update state with fresh data
-        setProperties(props);
-        console.log('Properties state updated');
-      } catch (error) {
-        console.error('Error fetching properties:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchProperties();
-    
-    // Expose fetchProperties for later use
-    Properties.fetchProperties = fetchProperties;
-  }, []);
-
-  // Get unique cities for filter dropdown
-  const cities = [...new Set(properties.map(p => p.city).filter(Boolean))].sort();
-
-  // Export to CSV function
-  const handleExportCSV = () => {
-    const headers = ['Address', 'City', 'State', 'Zip', 'Bedrooms', 'Bathrooms', 'Sq Ft', 'Monthly Rent', 'Status', 'Payment Status'];
-    const csvData = filteredProperties.map(p => [
-      p.address,
-      p.city,
-      p.state,
-      p.zipCode,
-      p.bedrooms,
-      `${p.fullBathrooms}.${p.halfBathrooms}`,
-      p.squareFootage,
-      p.monthlyRent,
-      p.status,
-      p.paymentStatus
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `properties-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const filteredProperties = properties.filter((property) => {
-    // Status filter
-    if (statusFilter !== "all" && property.status !== statusFilter) {
-      return false;
-    }
-
-    // Payment filter
-    if (paymentFilter !== "all" && property.paymentStatus !== paymentFilter) {
-      return false;
-    }
-
-    // City filter
-    if (cityFilter !== "all" && property.city !== cityFilter) {
-      return false;
-    }
-
-    // Rent range filter
-    const rent = property.monthlyRent || 0;
-    if (rent < rentRange[0] || rent > rentRange[1]) {
-      return false;
-    }
-
-    // Search filter
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      property.address.toLowerCase().includes(searchLower) ||
-      property.city.toLowerCase().includes(searchLower) ||
-      property.state.toLowerCase().includes(searchLower) ||
-      property.zipCode.toLowerCase().includes(searchLower)
-    );
+  const propertiesQuery = useQuery({
+    queryKey: ["properties", userId],
+    queryFn: () => listProperties(userId),
+    enabled: Boolean(userId),
   });
 
-  const handleEdit = (index) => {
-    // Use the filtered list to get the property
-    const property = filteredProperties[index];
-    
-    if (!property || !property.id) {
-      alert('Error: Cannot edit this property - missing ID');
-      return;
+  const tenantsQuery = useQuery({
+    queryKey: ["tenants", userId],
+    queryFn: () => listTenants(userId),
+    enabled: Boolean(userId),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: updateProperty,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["properties", userId] });
+      setSelectedProperty(null);
+    },
+  });
+
+  const tenantCountByProperty = useMemo(() => {
+    const map = new Map();
+    for (const tenant of tenantsQuery.data || []) {
+      if (!tenant.isActive) continue;
+      map.set(tenant.propertyId, (map.get(tenant.propertyId) || 0) + 1);
     }
-    
-    console.log('EDITING PROPERTY:', property);
-    console.log('WITH ID:', property.id);
-    
-    // Store BOTH the property ID and the index
-    setEditIndex({
-      index: index,
-      propertyId: property.id  // Store the actual ID explicitly
+    return map;
+  }, [tenantsQuery.data]);
+
+  const filtered = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      return propertiesQuery.data || [];
+    }
+    return (propertiesQuery.data || []).filter((property) => {
+      const haystack = [
+        property.name,
+        property.address,
+        property.city,
+        property.state,
+        property.zipCode,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(term);
     });
-    
-    // Make a clean copy and ensure ID is included
+  }, [propertiesQuery.data, searchTerm]);
+
+  function openEdit(property) {
+    setSelectedProperty(property);
     setForm({
-      ...property,
-      id: property.id  // Make absolutely sure ID is included
+      name: property.name || "",
+      address: property.address || "",
+      city: property.city || "",
+      state: property.state || "",
+      zipCode: property.zipCode || "",
+      propertyType: property.propertyType || "Single Family",
+      units: String(property.units ?? 1),
+      monthlyRent: String(property.monthlyRent ?? 0),
+      mortgageLoanBalance: property.mortgageLoanBalance ?? "",
+      mortgageAPR: property.mortgageAPR ?? "",
+      mortgageMonthlyPayment: property.mortgageMonthlyPayment ?? "",
+      notes: property.notes || "",
     });
-    
-    setIsEditing(true);
-  };
+  }
 
-  const handleDelete = async (index) => {
-    const property = properties[index];
-    if (window.confirm("Are you sure you want to delete this property?")) {
-      try {
-        if (property.id) {
-          await deleteDoc(doc(db, "properties", property.id));
-        }
-        setProperties(prev => prev.filter((_, i) => i !== index));
-        setDeleteErrorIndex(null);
-        await Properties.fetchProperties();
-      } catch (error) {
-        console.error("Error deleting property:", error);
-        alert(`Failed to delete property: ${error.message}. You can now force remove this property from the list.`);
-        setDeleteErrorIndex(index);
-      }
-    }
-  };
-
-  const handleAdd = () => {
-    setEditIndex(null);
-    setForm(emptyProperty);
-    setIsEditing(true);
-  };
-
-  const handleFormChange = (e) => {
-    const { name, value, type } = e.target;
-    if (["yearBuilt", "squareFootage", "bedrooms", "fullBathrooms", "halfBathrooms", "monthlyRent"].includes(name)) {
-      setForm((prev) => ({ ...prev, [name]: value === '' ? '' : Number(value) }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, imageBase64: reader.result, imageUrl: '' }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Create a timestamp to track this specific update
-    const updateTimestamp = new Date().toISOString();
-    
-    if (editIndex !== null) {
-      // Since we changed editIndex to store both index and ID, we need to extract the propertyId
-      const propertyId = editIndex.propertyId || form.id;
-      
-      console.log('=========== PROPERTY UPDATE ==========');
-      console.log('Property ID from editIndex:', editIndex.propertyId);
-      console.log('Property ID from form:', form.id);
-      console.log('Using Property ID:', propertyId);
-      console.log('Form data:', form);
-      
-      // Extra verification of the ID
-      if (!propertyId) {
-        console.error('CRITICAL ERROR: Missing property ID for update!');
-        alert('Cannot update property: Missing ID. Please try refreshing the page and try again.');
-        return;
-      }
-      
-      // Create reference to the EXACT document
-      const propertyRef = doc(db, "properties", propertyId);
-      
-      // Add a timestamp to the form data for tracking this update
-      const updatedForm = {
-        ...form,
-        lastUpdated: updateTimestamp,
-      };
-      
-      try {
-        console.log(`[${updateTimestamp}] Attempting to update property with ID:`, propertyId);
-        console.log(`[${updateTimestamp}] Property data for update:`, updatedForm);
-        
-        // First, attempt to get the current document
-        const docSnapshot = await getDoc(propertyRef);
-        const exists = docSnapshot.exists();
-        console.log(`[${updateTimestamp}] Document exists check:`, exists);
-        
-        // DIRECT APPROACH: First delete if exists, then set exactly what we want
-        // This prevents any possibility of duplication
-        try {
-          if (docSnapshot.exists()) {
-            console.log(`[${updateTimestamp}] Document exists, updating directly with ID: ${propertyId}`);
-            
-            // Use direct update without merge option - this is most reliable
-            await updateDoc(propertyRef, updatedForm);
-          } else {
-            console.log(`[${updateTimestamp}] Document doesn't exist, creating with ID: ${propertyId}`);
-            
-            // Create the document with EXPLICIT ID
-            await setDoc(propertyRef, {
-              ...updatedForm,
-              id: propertyId,  // Ensure ID is consistent
-            });
-          }
-          console.log(`[${updateTimestamp}] Document operation completed successfully`);
-        } catch (opError) {
-          console.error(`[${updateTimestamp}] Error during document operation:`, opError);
-          throw opError; // Rethrow to be caught by outer catch
-        }
-        
-        // Verify the update by fetching fresh data
-        const verifySnapshot = await getDoc(propertyRef);
-        if (verifySnapshot.exists()) {
-          const savedData = verifySnapshot.data();
-          console.log(`[${updateTimestamp}] Verification - Property saved with data:`, savedData);
-          
-          // Check if our timestamp made it into the saved data
-          if (savedData.lastUpdated === updateTimestamp) {
-            console.log(`[${updateTimestamp}] Success: Timestamp verification confirmed update`);
-          } else {
-            console.warn(`[${updateTimestamp}] Warning: Saved data doesn't contain our timestamp`);
-          }
-        } else {
-          console.error(`[${updateTimestamp}] Error: Property still not found after save attempt!`);
-        }
-        
-        // Refresh the properties list from Firestore
-        console.log(`[${updateTimestamp}] Refreshing properties list from Firestore...`);
-        await Properties.fetchProperties();
-        
-        // Also update the local state directly to ensure UI reflects changes
-        setProperties(prevProps => {
-          // Make a deep copy of the previous properties array
-          const updatedProps = [...prevProps];
-          
-          // Find the property by ID (more reliable than index)
-          const propIndex = updatedProps.findIndex(p => p.id === propertyId);
-          
-          if (propIndex >= 0) {
-            // Replace with our updated data plus the ID
-            updatedProps[propIndex] = { ...updatedForm, id: propertyId };
-            console.log(`[${updateTimestamp}] Updated property at index ${propIndex} in local state`);
-          } else {
-            // If not found, add as a new item
-            updatedProps.push({ ...updatedForm, id: propertyId });
-            console.log(`[${updateTimestamp}] Added property to local state as it wasn't found`);
-          }
-          
-          return updatedProps;
-        });
-        
-        // Run the duplicate cleanup to fix any duplicate properties
-        console.log(`[${updateTimestamp}] Running duplicate cleanup...`);
-        const cleanupResult = await cleanupDuplicateProperties();
-        if (cleanupResult) {
-          console.log(`[${updateTimestamp}] Cleanup removed duplicate properties`);
-        }
-        
-        // Show success message
-        alert(`Property updated successfully!`);
-        
-        // Reset the form state
-        setIsEditing(false);
-        setForm(emptyProperty);
-        setEditIndex(null);
-      } catch (error) {
-        console.error(`[${updateTimestamp}] Error updating property:`, error);
-        alert(`Failed to update property: ${error.message}. Please try again.`);
-      }
-    } else {
-      // Add
-      try {
-        await addDoc(collection(db, "properties"), form);
-        await Properties.fetchProperties();
-        setIsEditing(false);
-        setForm(emptyProperty);
-        setEditIndex(null);
-      } catch (error) {
-        console.error("Error adding property:", error);
-        alert(`Failed to add property: ${error.message}. Please try again.`);
-      }
-    }
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setForm(emptyProperty);
-    setEditIndex(null);
-  };
-
-  const togglePropertySelection = (property) => {
-    setSelectedProperties(prev => {
-      const isSelected = prev.find(p => p.id === property.id);
-      if (isSelected) {
-        return prev.filter(p => p.id !== property.id);
-      } else {
-        return [...prev, property];
-      }
+  function handleSave() {
+    if (!selectedProperty) return;
+    updateMutation.mutate({
+      id: selectedProperty._id,
+      name: form.name.trim(),
+      address: form.address.trim(),
+      city: form.city.trim(),
+      state: form.state.trim(),
+      zipCode: form.zipCode.trim(),
+      propertyType: form.propertyType.trim(),
+      units: parseNumber(form.units) || 1,
+      monthlyRent: parseNumber(form.monthlyRent) || 0,
+      mortgageLoanBalance: parseNumber(form.mortgageLoanBalance),
+      mortgageAPR: parseNumber(form.mortgageAPR),
+      mortgageMonthlyPayment: parseNumber(form.mortgageMonthlyPayment),
+      notes: form.notes.trim() || undefined,
+      clearMortgageLoanBalance: form.mortgageLoanBalance === "",
+      clearMortgageAPR: form.mortgageAPR === "",
+      clearMortgageMonthlyPayment: form.mortgageMonthlyPayment === "",
     });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedProperties.length === filteredProperties.length) {
-      setSelectedProperties([]);
-    } else {
-      setSelectedProperties(filteredProperties);
-    }
-  };
-
-  const isSelected = (property) => {
-    return selectedProperties.some(p => p.id === property.id);
-  };
-
-  if (loading) return <div>Loading properties...</div>;
+  }
 
   return (
-    <PageLayout title="Properties">
-      {/* Enhanced Filters */}
-      <PropertyFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        paymentFilter={paymentFilter}
-        setPaymentFilter={setPaymentFilter}
-        rentRange={rentRange}
-        setRentRange={setRentRange}
-        cityFilter={cityFilter}
-        setCityFilter={setCityFilter}
-        cities={cities}
-      />
+    <PageLayout
+      title="Properties"
+      onRefresh={() => {
+        propertiesQuery.refetch();
+        tenantsQuery.refetch();
+      }}
+      isRefreshing={propertiesQuery.isFetching || tenantsQuery.isFetching}
+    >
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Portfolio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by address or city"
+                className="pl-9"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Action Buttons */}
-      <div className="mb-6 flex gap-2 justify-between items-center">
-        <div className="flex gap-2 items-center">
-          {filteredProperties.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-            >
-              {selectedProperties.length === filteredProperties.length ? (
-                <CheckSquare className="h-4 w-4 mr-2" />
-              ) : (
-                <Square className="h-4 w-4 mr-2" />
-              )}
-              Select All
-            </Button>
-          )}
-          <span className="text-sm text-gray-600">
-            {filteredProperties.length} {filteredProperties.length === 1 ? 'property' : 'properties'}
-          </span>
-        </div>
+        {propertiesQuery.isLoading ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              Loading properties...
+            </CardContent>
+          </Card>
+        ) : null}
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="mr-2 h-4 w-4" /> Export CSV
-          </Button>
-          <Button variant="outline" onClick={async () => {
-            await cleanupDuplicateProperties();
-            await Properties.fetchProperties();
-            alert('Properties refreshed and duplicates removed');
-          }}>
-            Refresh
-          </Button>
-          <Button onClick={handleAdd}>
-            <Plus className="mr-2 h-4 w-4" /> Add Property
-          </Button>
-        </div>
+        {propertiesQuery.error ? (
+          <Card>
+            <CardContent className="py-6 text-sm text-red-600">
+              {propertiesQuery.error.message}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {!propertiesQuery.isLoading && !propertiesQuery.error ? (
+          <div className="grid gap-4">
+            {filtered.map((property) => (
+              <Card key={property._id}>
+                <CardContent className="pt-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold">{property.name || property.address}</h3>
+                        <Badge variant="outline">{property.propertyType}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {property.address}, {property.city}, {property.state} {property.zipCode}
+                      </p>
+                      <div className="grid gap-1 text-sm sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+                        <p>
+                          <span className="text-muted-foreground">Rent:</span>{" "}
+                          <span className="font-medium">{formatCurrency(property.monthlyRent)}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Units:</span>{" "}
+                          <span className="font-medium">{property.units}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Tenants:</span>{" "}
+                          <span className="font-medium">{tenantCountByProperty.get(property._id) || 0}</span>
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Mortgage:</span>{" "}
+                          <span className="font-medium">
+                            {property.mortgageMonthlyPayment
+                              ? formatCurrency(property.mortgageMonthlyPayment)
+                              : "—"}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => openEdit(property)}>
+                      <Edit3 className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {filtered.length === 0 ? (
+              <Card>
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  No matching properties found.
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      {/* Bulk Actions Bar */}
-      <BulkActions
-        selectedProperties={selectedProperties}
-        onComplete={Properties.fetchProperties}
-        onClearSelection={() => setSelectedProperties([])}
-      />
+      <Dialog open={Boolean(selectedProperty)} onOpenChange={(open) => !open && setSelectedProperty(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Property</DialogTitle>
+          </DialogHeader>
 
-      {isEditing && (
-        <form onSubmit={handleFormSubmit} className="mb-6 p-4 border rounded bg-gray-50">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="address">Address</label>
-              <Input name="address" id="address" value={form.address} onChange={handleFormChange} placeholder="Address" required />
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input
+                value={form.name || ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="city">City</label>
-              <Input name="city" id="city" value={form.city} onChange={handleFormChange} placeholder="City" required />
+            <div className="space-y-1">
+              <Label>Address</Label>
+              <Input
+                value={form.address || ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
+              />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="state">State</label>
-              <Input name="state" id="state" value={form.state} onChange={handleFormChange} placeholder="State" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="zipCode">Zip Code</label>
-              <Input name="zipCode" id="zipCode" value={form.zipCode} onChange={handleFormChange} placeholder="Zip Code" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="yearBuilt">Year Built</label>
-              <Input name="yearBuilt" id="yearBuilt" type="number" value={form.yearBuilt} onChange={handleFormChange} placeholder="Year Built" min={1800} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="squareFootage">Square Footage</label>
-              <Input name="squareFootage" id="squareFootage" type="number" value={form.squareFootage} onChange={handleFormChange} placeholder="Square Footage" min={0} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="bedrooms">Bedrooms</label>
-              <Input name="bedrooms" id="bedrooms" type="number" value={form.bedrooms} onChange={handleFormChange} placeholder="Bedrooms" min={0} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="fullBathrooms">Full Bathrooms</label>
-              <Input name="fullBathrooms" id="fullBathrooms" type="number" value={form.fullBathrooms} onChange={handleFormChange} placeholder="Full Bathrooms" min={0} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="halfBathrooms">Half Bathrooms</label>
-              <Input name="halfBathrooms" id="halfBathrooms" type="number" value={form.halfBathrooms} onChange={handleFormChange} placeholder="Half Bathrooms" min={0} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="leaseType">Lease Type</label>
-              <Input name="leaseType" id="leaseType" value={form.leaseType} onChange={handleFormChange} placeholder="Lease Type" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="monthlyRent">Monthly Rent</label>
-              <Input name="monthlyRent" id="monthlyRent" type="number" value={form.monthlyRent} onChange={handleFormChange} placeholder="Monthly Rent" min={0} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="status">Status</label>
-              <select name="status" id="status" value={form.status} onChange={handleFormChange} className="border rounded px-2 py-1 w-full">
-                <option value="occupied">Occupied</option>
-                <option value="vacant">Vacant</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="paymentStatus">Payment Status</label>
-              <select name="paymentStatus" id="paymentStatus" value={form.paymentStatus} onChange={handleFormChange} className="border rounded px-2 py-1 w-full">
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="overdue">Overdue</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="description">Description</label>
-              <Input name="description" id="description" value={form.description} onChange={handleFormChange} placeholder="Description" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" htmlFor="imageUpload">Property Media</label>
-              <Input name="imageUpload" id="imageUpload" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.ico,.mp4,.avi,.mov,.wmv,.flv,.webm,.mkv" onChange={handleImageUpload} />
-              {form.imageBase64 && (
-                <img src={form.imageBase64} alt="Preview" className="mt-2 h-24 w-24 object-cover rounded" />
-              )}
-              <div className="text-xs text-gray-500 mt-1">
-                Supported: Images, Videos, PDFs, Documents
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4 justify-end">
-            <Button variant="outline" type="button" onClick={handleCancel}>Cancel</Button>
-            <Button type="submit">{editIndex !== null ? "Update" : "Add"} Property</Button>
-          </div>
-        </form>
-      )}
 
-      {filteredProperties.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProperties.map((property, idx) => (
-            <Card
-              key={property.id}
-              className={`relative group overflow-hidden transition-all ${
-                isSelected(property) ? 'ring-2 ring-highlander-600 shadow-lg' : ''
-              }`}
-            >
-              {/* Selection Checkbox */}
-              <div className="absolute top-2 left-2 z-10">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    togglePropertySelection(property);
-                  }}
-                  className={`p-2 rounded-full transition-all ${
-                    isSelected(property)
-                      ? 'bg-highlander-600 text-white'
-                      : 'bg-white/80 text-gray-600 hover:bg-white'
-                  } shadow-md`}
-                >
-                  {isSelected(property) ? (
-                    <CheckSquare className="h-4 w-4" />
-                  ) : (
-                    <Square className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-
-              <div className="h-40 bg-gray-200">
-                <img 
-                  src={property.imageBase64 || property.imageUrl} 
-                  alt={property.address} 
-                  className="h-full w-full object-cover"
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label>City</Label>
+                <Input
+                  value={form.city || ""}
+                  onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
                 />
               </div>
-              <CardContent className="pt-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-medium text-lg">{property.address}</h3>
-                  <span className="text-xs px-2 py-1 rounded bg-gray-100">{property.status}</span>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {property.city}, {property.state} {property.zipCode}
-                </p>
-                <div className="mt-3 flex items-center justify-between text-sm">
-                  <div>
-                    <span className="font-medium">{property.bedrooms}</span> beds
-                  </div>
-                  <div>
-                    <span className="font-medium">{property.fullBathrooms}</span> full baths
-                  </div>
-                  <div>
-                    <span className="font-medium">{property.halfBathrooms}</span> half baths
-                  </div>
-                  <div>
-                    <span className="font-medium">{property.squareFootage?.toLocaleString?.() || ''}</span> sqft
-                  </div>
-                </div>
-                <div className="mt-2 text-sm text-gray-500">{property.description}</div>
-                <div className="mt-2 font-medium text-highlander-700">${property.monthlyRent?.toLocaleString?.() || ''}/month</div>
-                <div className="mt-1 text-xs text-gray-500">Payment Status: {property.paymentStatus || 'pending'}</div>
-              </CardContent>
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={() => {
-                    setSelectedProperty(property);
-                    setDetailsDialogOpen(true);
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="outline" onClick={() => handleEdit(idx)}><Edit className="h-4 w-4" /></Button>
-                <Button size="icon" variant="destructive" onClick={() => handleDelete(idx)}><Trash2 className="h-4 w-4" /></Button>
-                {deleteErrorIndex === idx && (
-                  <Button size="icon" variant="destructive" onClick={() => setProperties(prev => prev.filter((_, i) => i !== idx))}>
-                    Remove from List
-                  </Button>
-                )}
+              <div className="space-y-1">
+                <Label>State</Label>
+                <Input
+                  value={form.state || ""}
+                  onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
+                />
               </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-highlander-100 p-3 text-highlander-700 mb-4">
-            <Building size={24} />
-          </div>
-          <h3 className="text-lg font-medium mb-1">No properties found</h3>
-          <p className="text-gray-500 mb-4">
-            {searchTerm
-              ? "Try adjusting your search or filters"
-              : "Add your first property to get started"}
-          </p>
-          <Button onClick={handleAdd}>
-            <Plus className="mr-2 h-4 w-4" /> Add Property
-          </Button>
-        </div>
-      )}
+              <div className="space-y-1">
+                <Label>ZIP</Label>
+                <Input
+                  value={form.zipCode || ""}
+                  onChange={(event) => setForm((prev) => ({ ...prev, zipCode: event.target.value }))}
+                />
+              </div>
+            </div>
 
-      {/* Property Details Dialog */}
-      <PropertyDetailsDialog
-        property={selectedProperty}
-        open={detailsDialogOpen}
-        onOpenChange={setDetailsDialogOpen}
-      />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Type</Label>
+                <Input
+                  value={form.propertyType || ""}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, propertyType: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Units</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={form.units || ""}
+                  onChange={(event) => setForm((prev) => ({ ...prev, units: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Monthly rent</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.monthlyRent || ""}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, monthlyRent: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Loan balance</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.mortgageLoanBalance}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, mortgageLoanBalance: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>APR (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.mortgageAPR}
+                  onChange={(event) => setForm((prev) => ({ ...prev, mortgageAPR: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Monthly mortgage payment</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.mortgageMonthlyPayment}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, mortgageMonthlyPayment: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Notes</Label>
+              <Input
+                value={form.notes || ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedProperty(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Saving..." : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
-};
-
-export default Properties;
+}

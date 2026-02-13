@@ -1,296 +1,195 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Mail, Phone, Lock, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { db } from "@/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { listUserProfile, updateUserProfile } from "@/services/dataService";
 
-const defaultUserData = {
-  name: "John Doe",
-  email: "john.doe@highlander.com",
-  phone: "(555) 123-4567",
-  role: "Property Manager",
-  company: "Highlander Homes"
-};
-
-const PROFILE_DOC_ID = "main"; // You can use a static doc id for single-user or use auth uid for multi-user
-
-const Profile = () => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false);
-  const [userData, setUserData] = useState(defaultUserData);
-  const [loading, setLoading] = useState(true);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+export default function Profile() {
+  const { currentUser, token, updatePassword, refreshSession, logout } = useAuth();
+  const userId = currentUser?._id;
+  const queryClient = useQueryClient();
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
+  });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const [passwordError, setPasswordError] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  // Load from Firestore on mount
+  const profileQuery = useQuery({
+    queryKey: ["userProfile", userId],
+    queryFn: () => listUserProfile(userId),
+    enabled: Boolean(userId),
+  });
+
   useEffect(() => {
-    async function fetchProfile() {
-      setLoading(true);
-      const docRef = doc(db, "profile", PROFILE_DOC_ID);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setUserData(docSnap.data());
-      }
-      setLoading(false);
-    }
-    fetchProfile();
-    // Expose fetchProfile for later use
-    Profile.fetchProfile = fetchProfile;
-  }, []);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const handleSaveProfile = async () => {
-    setIsEditing(false);
-    const docRef = doc(db, "profile", PROFILE_DOC_ID);
-    await setDoc(docRef, userData);
-    await Profile.fetchProfile();
-  };
-
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    setPasswordError("");
-    const storedPassword = localStorage.getItem("highlanderhomes_password") || "highlander2025";
-    if (passwordForm.currentPassword !== storedPassword) {
-      setPasswordError("Current password is incorrect.");
-      return;
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("New password and confirmation do not match.");
-      return;
-    }
-    // Save new password to localStorage
-    localStorage.setItem("highlanderhomes_password", passwordForm.newPassword);
-    setIsChangePasswordOpen(false);
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+    if (!profileQuery.data) return;
+    setProfileForm({
+      name: profileQuery.data.name || "",
+      email: profileQuery.data.email || "",
     });
-  };
+  }, [profileQuery.data]);
 
-  if (loading) return <div>Loading profile...</div>;
+  const updateMutation = useMutation({
+    mutationFn: updateUserProfile,
+    onSuccess: async (updated) => {
+      await queryClient.invalidateQueries({ queryKey: ["userProfile", userId] });
+      refreshSession({
+        token,
+        user: {
+          ...currentUser,
+          name: updated.name,
+          email: updated.email,
+        },
+      });
+      setMessage("Profile updated.");
+      setError("");
+    },
+    onError: (nextError) => {
+      setError(nextError.message);
+      setMessage("");
+    },
+  });
+
+  async function handlePasswordChange(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    try {
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        throw new Error("New password and confirmation do not match.");
+      }
+      await updatePassword({
+        email: profileForm.email.trim(),
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setMessage("Password updated.");
+    } catch (nextError) {
+      setError(nextError.message);
+    }
+  }
 
   return (
-    <PageLayout title="Profile">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Full Name</Label>
-                    <div className="flex items-center mt-1">
-                      <User className="h-4 w-4 text-gray-500 mr-2" />
-                      {isEditing ? (
-                        <Input
-                          id="name"
-                          value={userData.name}
-                          onChange={(e) => 
-                            setUserData({ ...userData, name: e.target.value })
-                          }
-                        />
-                      ) : (
-                        <span>{userData.name}</span>
-                      )}
-                    </div>
-                  </div>
+    <PageLayout title="Profile" onRefresh={() => profileQuery.refetch()} isRefreshing={profileQuery.isFetching}>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Account</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profileQuery.isLoading ? <p className="text-sm text-muted-foreground">Loading profile...</p> : null}
+            {profileQuery.error ? (
+              <p className="text-sm text-red-600">{profileQuery.error.message}</p>
+            ) : null}
 
-                  <div>
-                    <Label htmlFor="role">Role</Label>
-                    <div className="flex items-center mt-1">
-                      <Lock className="h-4 w-4 text-gray-500 mr-2" />
-                      {isEditing ? (
-                        <select
-                          id="role"
-                          className="border rounded px-2 py-1 text-sm"
-                          value={userData.role}
-                          onChange={(e) =>
-                            setUserData({ ...userData, role: e.target.value })
-                          }
-                        >
-                          <option value="Property Manager">Property Manager</option>
-                          <option value="Landlord">Landlord</option>
-                        </select>
-                      ) : (
-                        <span>{userData.role}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input
+                value={profileForm.name}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, name: event.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={profileForm.email}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({ ...prev, email: event.target.value }))
+                }
+              />
+            </div>
+            <Button
+              onClick={() =>
+                updateMutation.mutate({
+                  userId,
+                  name: profileForm.name.trim(),
+                  email: profileForm.email.trim(),
+                })
+              }
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save profile"}
+            </Button>
+          </CardContent>
+        </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="flex items-center mt-1">
-                      <Mail className="h-4 w-4 text-gray-500 mr-2" />
-                      {isEditing ? (
-                        <Input
-                          id="email"
-                          type="email"
-                          value={userData.email}
-                          onChange={(e) =>
-                            setUserData({ ...userData, email: e.target.value })
-                          }
-                        />
-                      ) : (
-                        <span>{userData.email}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="flex items-center mt-1">
-                      <Phone className="h-4 w-4 text-gray-500 mr-2" />
-                      {isEditing ? (
-                        <Input
-                          id="phone"
-                          value={userData.phone}
-                          onChange={(e) =>
-                            setUserData({ ...userData, phone: e.target.value })
-                          }
-                        />
-                      ) : (
-                        <span>{userData.phone}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="pt-4 flex justify-end space-x-2">
-                  {isEditing ? (
-                    <>
-                      <Button variant="outline" onClick={() => setIsEditing(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSaveProfile}>Save Changes</Button>
-                    </>
-                  ) : (
-                    <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
-                  )}
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Security</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handlePasswordChange} className="space-y-3">
+              <div className="space-y-1">
+                <Label>Current password</Label>
+                <Input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      currentPassword: event.target.value,
+                    }))
+                  }
+                  required
+                />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="space-y-1">
+                <Label>New password</Label>
+                <Input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      newPassword: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Confirm new password</Label>
+                <Input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </div>
+              <Button type="submit">Change password</Button>
+            </form>
 
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button 
-                variant="destructive" 
-                className="w-full" 
-                onClick={handleLogout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
+            <Button variant="destructive" onClick={logout}>
+              Log out
+            </Button>
 
-              <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <Lock className="mr-2 h-4 w-4" />
-                    Change Password
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Change Password</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                    {passwordError && (
-                      <div className="text-red-600 text-sm font-medium">{passwordError}</div>
-                    )}
-                    <div>
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input
-                        id="currentPassword"
-                        name="currentPassword"
-                        type="password"
-                        value={passwordForm.currentPassword}
-                        onChange={handlePasswordChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input
-                        id="newPassword"
-                        name="newPassword"
-                        type="password"
-                        value={passwordForm.newPassword}
-                        onChange={handlePasswordChange}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        value={passwordForm.confirmPassword}
-                        onChange={handlePasswordChange}
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => setIsChangePasswordOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit">Change Password</Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
-        </div>
+            {message ? <p className="text-sm text-emerald-600">{message}</p> : null}
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          </CardContent>
+        </Card>
       </div>
     </PageLayout>
   );
-};
-
-export default Profile;
+}

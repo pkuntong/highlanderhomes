@@ -211,6 +211,25 @@ export default defineSchema({
     .index("by_property", ["propertyId"])
     .index("by_user_observed", ["userId", "observedAt"]),
 
+  // Documents table (leases, insurance, contracts, receipts, images, PDFs, etc.)
+  documents: defineTable({
+    userId: v.id("users"),
+    propertyId: v.optional(v.id("properties")),
+    tenantId: v.optional(v.id("tenants")),
+    title: v.string(),
+    category: v.string(), // "lease", "insurance", "contractor", "receipt", "photo", "other"
+    storageId: v.id("_storage"),
+    contentType: v.optional(v.string()),
+    fileSizeBytes: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_property", ["propertyId"])
+    .index("by_user_category", ["userId", "category"])
+    .index("by_user_updated", ["userId", "updatedAt"]),
+
   // Feed Events table (activity feed)
   feedEvents: defineTable({
     eventType: v.string(), // "maintenanceNew", "rentReceived", etc.

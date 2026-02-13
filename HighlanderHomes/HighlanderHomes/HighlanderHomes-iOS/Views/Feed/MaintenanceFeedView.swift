@@ -183,6 +183,9 @@ struct ConvexFeedEventCard: View {
         if event.type.contains("rent") || event.type.contains("payment") { return "financial" }
         if event.type.contains("contractor") { return "contractor" }
         if event.type.contains("tenant") { return "tenant" }
+        if event.type.contains("lease") || event.type.contains("insurance") || event.type.contains("license") || event.type.contains("compliance") {
+            return "compliance"
+        }
         return "general"
     }
 
@@ -192,6 +195,7 @@ struct ConvexFeedEventCard: View {
         case "financial": return "dollarsign.circle.fill"
         case "contractor": return "person.badge.key.fill"
         case "tenant": return "person.fill"
+        case "compliance": return "doc.text.magnifyingglass"
         default: return "bell.fill"
         }
     }
@@ -322,6 +326,12 @@ struct ConvexFeedEventCard: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+        case "compliance":
+            return LinearGradient(
+                colors: [Theme.Colors.infoBlue.opacity(0.25), Theme.Colors.slate900],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         default:
             return Theme.Gradients.cardGradient
         }
@@ -332,6 +342,8 @@ struct ConvexFeedEventCard: View {
             return Theme.Colors.alertRed
         } else if eventCategory == "financial" {
             return Theme.Colors.gold.opacity(0.5)
+        } else if eventCategory == "compliance" {
+            return Theme.Colors.infoBlue.opacity(0.6)
         } else {
             return Theme.Colors.slate700.opacity(0.5)
         }
@@ -343,6 +355,8 @@ struct ConvexFeedEventCard: View {
             return Theme.Colors.gold.opacity(0.2)
         case "maintenance":
             return Theme.Colors.alertRed.opacity(0.2)
+        case "compliance":
+            return Theme.Colors.infoBlue.opacity(0.2)
         default:
             return Color.black.opacity(0.3)
         }

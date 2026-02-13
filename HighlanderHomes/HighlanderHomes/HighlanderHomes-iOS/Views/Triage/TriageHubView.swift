@@ -331,6 +331,13 @@ struct ConvexTriageRequestCard: View {
     let request: ConvexMaintenanceRequest
     @State private var showQuickActions = false
 
+    private static let timelineDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
     private var categoryIcon: String {
         switch request.category.lowercased() {
         case "plumbing": return "drop.fill"
@@ -356,6 +363,24 @@ struct ConvexTriageRequestCard: View {
     private var ageInDays: Int {
         let days = Calendar.current.dateComponents([.day], from: request.createdAtDate, to: Date()).day ?? 0
         return max(0, days)
+    }
+
+    private var openedAtText: String {
+        Self.timelineDateFormatter.string(from: request.createdAtDate)
+    }
+
+    private var updatedAtText: String {
+        Self.timelineDateFormatter.string(from: request.updatedAtDate)
+    }
+
+    private var scheduledAtText: String? {
+        guard let date = request.scheduledDateValue else { return nil }
+        return Self.timelineDateFormatter.string(from: date)
+    }
+
+    private var completedAtText: String? {
+        guard let date = request.completedDateValue else { return nil }
+        return Self.timelineDateFormatter.string(from: date)
     }
 
     var body: some View {
@@ -398,35 +423,50 @@ struct ConvexTriageRequestCard: View {
                     .lineLimit(2)
             }
 
-            // Bottom Row
-            HStack {
-                // Time ago
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11))
-                    Text("\(ageInDays)d ago")
-                        .font(.system(size: 12, weight: .medium))
+            // Bottom Section
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                HStack {
+                    // Time ago
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 11))
+                        Text("\(ageInDays)d ago")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(Theme.Colors.textMuted)
+
+                    Spacer()
+
+                    // Quick Action Buttons
+                    HStack(spacing: 8) {
+                        QuickActionButton(
+                            icon: "person.badge.plus",
+                            label: "Assign",
+                            color: Theme.Colors.infoBlue
+                        ) {
+                            assignContractor()
+                        }
+
+                        QuickActionButton(
+                            icon: "bubble.left.fill",
+                            label: "Message",
+                            color: Theme.Colors.emerald
+                        ) {
+                            sendMessage()
+                        }
+                    }
                 }
-                .foregroundColor(Theme.Colors.textMuted)
 
-                Spacer()
+                VStack(alignment: .leading, spacing: 3) {
+                    TimelineLine(icon: "calendar.badge.plus", text: "Opened \(openedAtText)")
+                    TimelineLine(icon: "arrow.clockwise.circle", text: "Updated \(updatedAtText)")
 
-                // Quick Action Buttons
-                HStack(spacing: 8) {
-                    QuickActionButton(
-                        icon: "person.badge.plus",
-                        label: "Assign",
-                        color: Theme.Colors.infoBlue
-                    ) {
-                        assignContractor()
+                    if let scheduledAtText {
+                        TimelineLine(icon: "calendar", text: "Scheduled \(scheduledAtText)")
                     }
 
-                    QuickActionButton(
-                        icon: "bubble.left.fill",
-                        label: "Message",
-                        color: Theme.Colors.emerald
-                    ) {
-                        sendMessage()
+                    if let completedAtText {
+                        TimelineLine(icon: "checkmark.seal", text: "Completed \(completedAtText)")
                     }
                 }
             }
@@ -454,6 +494,21 @@ struct ConvexTriageRequestCard: View {
     private func sendMessage() {
         HapticManager.shared.impact(.light)
         // Open messaging
+    }
+}
+
+private struct TimelineLine: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundColor(Theme.Colors.textMuted)
     }
 }
 
@@ -638,6 +693,13 @@ struct ConvexTriageDetailView: View {
 struct ConvexDetailHeaderCard: View {
     let request: ConvexMaintenanceRequest
 
+    private static let detailDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
     private var categoryIcon: String {
         switch request.category.lowercased() {
         case "plumbing": return "drop.fill"
@@ -686,6 +748,29 @@ struct ConvexDetailHeaderCard: View {
                 ConvexPriorityBadge(priority: request.isUrgent ? 3 : 2)
                 Spacer()
                 ConvexStatusBadge(status: request.status)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                TimelineLine(
+                    icon: "calendar.badge.plus",
+                    text: "Opened \(Self.detailDateFormatter.string(from: request.createdAtDate))"
+                )
+                TimelineLine(
+                    icon: "arrow.clockwise.circle",
+                    text: "Updated \(Self.detailDateFormatter.string(from: request.updatedAtDate))"
+                )
+                if let scheduledDate = request.scheduledDateValue {
+                    TimelineLine(
+                        icon: "calendar",
+                        text: "Scheduled \(Self.detailDateFormatter.string(from: scheduledDate))"
+                    )
+                }
+                if let completedDate = request.completedDateValue {
+                    TimelineLine(
+                        icon: "checkmark.seal",
+                        text: "Completed \(Self.detailDateFormatter.string(from: completedDate))"
+                    )
+                }
             }
         }
         .padding(Theme.Spacing.lg)

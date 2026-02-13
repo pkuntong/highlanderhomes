@@ -219,6 +219,7 @@ class ConvexDataService: ObservableObject {
             args: ["userId": userId]
         ) { [weak self] (tens: [ConvexTenant]) in
             self?.tenants = tens
+            self?.generateFeedEvents()
         }
 
         client.subscribe(
@@ -240,6 +241,7 @@ class ConvexDataService: ObservableObject {
             args: ["userId": userId]
         ) { [weak self] (policies: [ConvexInsurancePolicy]) in
             self?.insurancePolicies = policies
+            self?.generateFeedEvents()
         }
 
         client.subscribe(
@@ -247,6 +249,7 @@ class ConvexDataService: ObservableObject {
             args: ["userId": userId]
         ) { [weak self] (licenses: [ConvexRentalLicense]) in
             self?.rentalLicenses = licenses
+            self?.generateFeedEvents()
         }
 
         client.subscribe(
@@ -804,6 +807,7 @@ class ConvexDataService: ObservableObject {
     // MARK: - Feed Events
     private func generateFeedEvents() {
         var events: [ConvexFeedEvent] = []
+        let now = Date()
 
         // Create events from maintenance requests
         for request in maintenanceRequests where request.status != "completed" && request.status != "cancelled" {
@@ -823,13 +827,120 @@ class ConvexDataService: ObservableObject {
             events.append(event)
         }
 
-        // Sort by priority and timestamp
+        // Lease expiration alerts (active tenants only)
+        for tenant in tenants where tenant.isActive {
+            let days = daysUntil(date: tenant.leaseEndDateValue)
+            guard days <= 60 else { continue }
+
+            let expired = days < 0
+            let absDays = abs(days)
+            let urgency = severity(daysUntil: days)
+            let subtitle = expired
+                ? "Lease expired \(absDays)d ago"
+                : "Lease ends in \(days)d"
+
+            let event = ConvexFeedEvent(
+                id: "lease-\(tenant.id)",
+                type: "leaseExpiry",
+                title: "Lease Renewal Alert",
+                subtitle: subtitle,
+                detail: "\(tenant.fullName) • \(friendlyDate(tenant.leaseEndDateValue))",
+                timestamp: tenant.leaseEndDateValue,
+                isActionRequired: urgency >= 2,
+                actionLabel: urgency >= 2 ? "Review Lease" : nil,
+                priority: urgency,
+                relatedId: tenant.id
+            )
+            events.append(event)
+        }
+
+        // Insurance expiration alerts
+        for policy in insurancePolicies {
+            let days = daysUntil(date: policy.termEndDate)
+            guard days <= 60 else { continue }
+
+            let expired = days < 0
+            let absDays = abs(days)
+            let urgency = severity(daysUntil: days)
+            let subtitle = expired
+                ? "Policy expired \(absDays)d ago"
+                : "Policy ends in \(days)d"
+
+            let event = ConvexFeedEvent(
+                id: "insurance-\(policy.id)",
+                type: "insuranceExpiry",
+                title: "Insurance Renewal Alert",
+                subtitle: subtitle,
+                detail: "\(policy.insuranceName) • \(policy.propertyLabel) • \(friendlyDate(policy.termEndDate))",
+                timestamp: policy.termEndDate,
+                isActionRequired: urgency >= 2,
+                actionLabel: urgency >= 2 ? "Renew Policy" : nil,
+                priority: urgency,
+                relatedId: policy.id
+            )
+            events.append(event)
+        }
+
+        // Rental license expiration alerts
+        for license in rentalLicenses {
+            let days = daysUntil(date: license.dateToValue)
+            guard days <= 90 else { continue }
+
+            let expired = days < 0
+            let absDays = abs(days)
+            let urgency = severity(daysUntil: days)
+            let subtitle = expired
+                ? "License expired \(absDays)d ago"
+                : "License ends in \(days)d"
+
+            let event = ConvexFeedEvent(
+                id: "license-\(license.id)",
+                type: "licenseExpiry",
+                title: "Rental License Alert",
+                subtitle: subtitle,
+                detail: "\(license.category) • \(license.propertyLabel) • \(friendlyDate(license.dateToValue))",
+                timestamp: license.dateToValue,
+                isActionRequired: urgency >= 2,
+                actionLabel: urgency >= 2 ? "Renew License" : nil,
+                priority: urgency,
+                relatedId: license.id
+            )
+            events.append(event)
+        }
+
+        // Sort by priority, then upcoming deadlines (soonest first), then recent events.
         feedEvents = events.sorted { event1, event2 in
             if event1.priority != event2.priority {
                 return event1.priority > event2.priority
             }
+
+            let event1IsFuture = event1.timestamp >= now
+            let event2IsFuture = event2.timestamp >= now
+            if event1IsFuture && event2IsFuture {
+                return event1.timestamp < event2.timestamp
+            }
+            if event1IsFuture != event2IsFuture {
+                return event1IsFuture
+            }
             return event1.timestamp > event2.timestamp
         }
+    }
+
+    private func daysUntil(date: Date) -> Int {
+        Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
+    }
+
+    private func severity(daysUntil: Int) -> Int {
+        if daysUntil < 0 { return 3 }
+        if daysUntil <= 14 { return 3 }
+        if daysUntil <= 30 { return 2 }
+        return 1
+    }
+
+    private func friendlyDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
     }
 }
 
@@ -1044,8 +1155,17 @@ struct ConvexMaintenanceRequest: Codable, Identifiable {
         Date(timeIntervalSince1970: createdAt / 1000)
     }
 
+    var updatedAtDate: Date {
+        Date(timeIntervalSince1970: updatedAt / 1000)
+    }
+
     var scheduledDateValue: Date? {
         guard let ts = scheduledDate else { return nil }
+        return Date(timeIntervalSince1970: ts / 1000)
+    }
+
+    var completedDateValue: Date? {
+        guard let ts = completedDate else { return nil }
         return Date(timeIntervalSince1970: ts / 1000)
     }
 }

@@ -1,112 +1,88 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  sendPasswordResetEmail
-} from "firebase/auth";
-import { auth } from "@/firebase";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  changePassword,
+  clearSession,
+  loadSession,
+  requestPasswordReset,
+  resendEmailCode,
+  saveSession,
+  signInWithEmail,
+  signUpWithEmail,
+  verifyEmailCode,
+} from "@/services/authService";
 
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const hasFirebase = Boolean(auth);
 
-  // Sign up function for creating new users
-  const signup = async (email, password) => {
-    try {
-      if (!hasFirebase) {
-        throw new Error("Auth is not configured for the web app.");
-      }
-      return await createUserWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error("Error signing up:", error);
-      throw error;
-    }
-  };
-
-  // Login function using Firebase Authentication
-  const login = async (email, password) => {
-    try {
-      if (!hasFirebase) {
-        throw new Error("Auth is not configured for the web app.");
-      }
-      // Now using Firebase Authentication primarily
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log("Firebase login successful");
-      return true;
-    } catch (error) {
-      console.error("Error logging in:", error);
-      throw error;
-    }
-  };
-
-  // Logout function handling both auth methods
-  const logout = async () => {
-    try {
-      // Always clear localStorage auth state for legacy method
-      localStorage.removeItem("isAuthenticated");
-      
-      // Also sign out of Firebase if possible
-      try {
-        if (!hasFirebase) {
-          setCurrentUser(null);
-          return;
-        }
-        await signOut(auth);
-      } catch (error) {
-        // Ignore Firebase signOut errors since we might not be using it
-        console.log("Firebase signOut not possible, but continuing");
-      }
-      
-      // Always reset current user state regardless of auth method
-      setCurrentUser(null);
-    } catch (error) {
-      console.error("Error logging out:", error);
-      throw error;
-    }
-  };
-
-  // Password reset function
-  const resetPassword = async (email) => {
-    try {
-      if (!hasFirebase) {
-        throw new Error("Auth is not configured for the web app.");
-      }
-      return await sendPasswordResetEmail(auth, email);
-    } catch (error) {
-      console.error("Error resetting password:", error);
-      throw error;
-    }
-  };
-  
-  // Listen for authentication state changes using Firebase
   useEffect(() => {
-    if (!hasFirebase) {
-      setLoading(false);
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-    });
-    
-    // Cleanup subscription on unmount
-    return unsubscribe;
+    const storedSession = loadSession();
+    setSession(storedSession);
+    setLoading(false);
   }, []);
 
-  const value = {
-    currentUser,
-    isAuthenticated: !!currentUser,
-    login,
-    logout,
-    signup,
-    resetPassword,
-    loading
+  const login = async (email, password) => {
+    const nextSession = await signInWithEmail(email, password);
+    setSession(nextSession);
+    return nextSession;
   };
+
+  const signup = async ({ name, email, password }) => {
+    return signUpWithEmail({ name, email, password });
+  };
+
+  const verifyEmail = async ({ email, code }) => {
+    const nextSession = await verifyEmailCode({ email, code });
+    setSession(nextSession);
+    return nextSession;
+  };
+
+  const sendVerificationEmail = async (email) => {
+    return resendEmailCode(email);
+  };
+
+  const resetPassword = async (email) => {
+    return requestPasswordReset(email);
+  };
+
+  const updatePassword = async ({ email, currentPassword, newPassword }) => {
+    return changePassword({ email, currentPassword, newPassword });
+  };
+
+  const logout = async () => {
+    clearSession();
+    setSession(null);
+  };
+
+  const refreshSession = (nextSession) => {
+    const candidate = {
+      token: nextSession?.token || session?.token,
+      user: nextSession?.user || session?.user,
+    };
+    const stored = saveSession(candidate);
+    setSession(stored);
+    return stored;
+  };
+
+  const value = useMemo(
+    () => ({
+      currentUser: session?.user ?? null,
+      token: session?.token ?? null,
+      isAuthenticated: Boolean(session?.user),
+      loading,
+      login,
+      logout,
+      signup,
+      verifyEmail,
+      sendVerificationEmail,
+      resetPassword,
+      updatePassword,
+      refreshSession,
+    }),
+    [loading, session]
+  );
   
   return (
     <AuthContext.Provider value={value}>
