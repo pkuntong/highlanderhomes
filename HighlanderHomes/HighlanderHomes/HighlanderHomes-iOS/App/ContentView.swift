@@ -79,6 +79,7 @@ struct ContentView: View {
 struct CustomTabBar: View {
     @Binding var selectedTab: AppState.Tab
     var namespace: Namespace.ID
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
         HStack(spacing: 0) {
@@ -89,8 +90,15 @@ struct CustomTabBar: View {
                     namespace: namespace
                 ) {
                     HapticManager.shared.impact(.medium)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = tab
+                    if selectedTab == tab {
+                        // Re-tap current tab to return to root list/navigation.
+                        if tab == .properties {
+                            appState.propertiesTabResetTrigger += 1
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = tab
+                        }
                     }
                 }
             }
@@ -99,11 +107,12 @@ struct CustomTabBar: View {
         .padding(.vertical, 12)
         .background {
             RoundedRectangle(cornerRadius: 24)
-                .fill(.ultraThinMaterial)
+                .fill(Theme.Colors.surface.opacity(0.96))
                 .overlay {
                     RoundedRectangle(cornerRadius: 24)
                         .stroke(Theme.Colors.slate700, lineWidth: 1)
                 }
+                .shadow(color: Theme.Colors.slate400.opacity(0.18), radius: 8, x: 0, y: 4)
         }
     }
 }

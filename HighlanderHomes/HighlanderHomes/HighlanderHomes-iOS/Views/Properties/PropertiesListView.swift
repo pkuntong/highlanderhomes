@@ -11,6 +11,7 @@ struct PropertiesListView: View {
     @State private var showingContractors = false
     @State private var showingPricing = false
     @State private var showingLimitAlert = false
+    @State private var navigationPath = NavigationPath()
 
     private let freeLimit = 3
 
@@ -34,7 +35,7 @@ struct PropertiesListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ZStack {
                 Theme.Colors.background
                     .ignoresSafeArea()
@@ -76,6 +77,8 @@ struct PropertiesListView: View {
             }
             .navigationTitle("Properties")
             .navigationBarTitleDisplayMode(.large)
+            .toolbarBackground(Theme.Colors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
@@ -132,6 +135,12 @@ struct PropertiesListView: View {
         }
         .onChange(of: showingContractors) { newValue in
             appState.isModalPresented = newValue || showingAddProperty
+        }
+        .onChange(of: appState.propertiesTabResetTrigger) { _ in
+            guard !navigationPath.isEmpty else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                navigationPath = NavigationPath()
+            }
         }
     }
 }
@@ -263,6 +272,9 @@ struct AddPropertySheet: View {
     @State private var propertyType = "Single Family"
     @State private var units = 1
     @State private var monthlyRent = ""
+    @State private var mortgageLoanBalance = ""
+    @State private var mortgageAPR = ""
+    @State private var mortgageMonthlyPayment = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -315,6 +327,9 @@ struct AddPropertySheet: View {
 
                             FormField(label: "Monthly Rent ($)", text: $monthlyRent, placeholder: "0", keyboard: .decimalPad)
                         }
+                        FormField(label: "Mortgage Loan Balance ($)", text: $mortgageLoanBalance, placeholder: "Optional", keyboard: .decimalPad)
+                        FormField(label: "Mortgage APR (%)", text: $mortgageAPR, placeholder: "Optional", keyboard: .decimalPad)
+                        FormField(label: "Monthly Mortgage Payment ($)", text: $mortgageMonthlyPayment, placeholder: "Optional", keyboard: .decimalPad)
 
                         if let error = errorMessage {
                             Text(error)
@@ -353,6 +368,9 @@ struct AddPropertySheet: View {
         isSaving = true
         errorMessage = nil
         do {
+            let parsedMortgageBalance = parseOptionalDecimal(mortgageLoanBalance)
+            let parsedMortgageAPR = parseOptionalDecimal(mortgageAPR)
+            let parsedMortgageMonthlyPayment = parseOptionalDecimal(mortgageMonthlyPayment)
             let input = ConvexPropertyInput(
                 name: name,
                 address: address,
@@ -364,6 +382,9 @@ struct AddPropertySheet: View {
                 monthlyRent: Double(monthlyRent) ?? 0,
                 purchasePrice: nil,
                 currentValue: nil,
+                mortgageLoanBalance: parsedMortgageBalance,
+                mortgageAPR: parsedMortgageAPR,
+                mortgageMonthlyPayment: parsedMortgageMonthlyPayment,
                 imageURL: nil,
                 notes: nil
             )
@@ -375,6 +396,12 @@ struct AddPropertySheet: View {
             HapticManager.shared.error()
         }
         isSaving = false
+    }
+
+    private func parseOptionalDecimal(_ raw: String) -> Double? {
+        let cleaned = raw.filter { "0123456789.-".contains($0) }
+        guard !cleaned.isEmpty else { return nil }
+        return Double(cleaned)
     }
 }
 

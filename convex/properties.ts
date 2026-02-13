@@ -33,6 +33,9 @@ export const list = query({
       monthlyRent: prop.monthlyRent,
       purchasePrice: prop.purchasePrice,
       currentValue: prop.currentValue,
+      mortgageLoanBalance: prop.mortgageLoanBalance,
+      mortgageAPR: prop.mortgageAPR,
+      mortgageMonthlyPayment: prop.mortgageMonthlyPayment,
       imageURL: prop.imageURL,
       notes: prop.notes,
       createdAt: prop.createdAt,
@@ -65,6 +68,9 @@ export const get = query({
       monthlyRent: property.monthlyRent,
       purchasePrice: property.purchasePrice,
       currentValue: property.currentValue,
+      mortgageLoanBalance: property.mortgageLoanBalance,
+      mortgageAPR: property.mortgageAPR,
+      mortgageMonthlyPayment: property.mortgageMonthlyPayment,
       imageURL: property.imageURL,
       notes: property.notes,
       createdAt: property.createdAt,
@@ -88,6 +94,9 @@ export const create = mutation({
     monthlyRent: v.number(),
     purchasePrice: v.optional(v.number()),
     currentValue: v.optional(v.number()),
+    mortgageLoanBalance: v.optional(v.number()),
+    mortgageAPR: v.optional(v.number()),
+    mortgageMonthlyPayment: v.optional(v.number()),
     imageURL: v.optional(v.string()),
     notes: v.optional(v.string()),
     userId: v.id("users"),
@@ -123,6 +132,9 @@ export const create = mutation({
       monthlyRent: args.monthlyRent,
       purchasePrice: args.purchasePrice,
       currentValue: args.currentValue,
+      mortgageLoanBalance: args.mortgageLoanBalance,
+      mortgageAPR: args.mortgageAPR,
+      mortgageMonthlyPayment: args.mortgageMonthlyPayment,
       imageURL: args.imageURL,
       notes: args.notes,
       userId: args.userId,
@@ -144,6 +156,9 @@ export const create = mutation({
       monthlyRent: property!.monthlyRent,
       purchasePrice: property!.purchasePrice,
       currentValue: property!.currentValue,
+      mortgageLoanBalance: property!.mortgageLoanBalance,
+      mortgageAPR: property!.mortgageAPR,
+      mortgageMonthlyPayment: property!.mortgageMonthlyPayment,
       imageURL: property!.imageURL,
       notes: property!.notes,
       createdAt: property!.createdAt,
@@ -168,19 +183,45 @@ export const update = mutation({
     monthlyRent: v.optional(v.number()),
     purchasePrice: v.optional(v.number()),
     currentValue: v.optional(v.number()),
+    mortgageLoanBalance: v.optional(v.number()),
+    mortgageAPR: v.optional(v.number()),
+    mortgageMonthlyPayment: v.optional(v.number()),
+    clearMortgageLoanBalance: v.optional(v.boolean()),
+    clearMortgageAPR: v.optional(v.boolean()),
+    clearMortgageMonthlyPayment: v.optional(v.boolean()),
     imageURL: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
+    const {
+      id,
+      clearMortgageLoanBalance,
+      clearMortgageAPR,
+      clearMortgageMonthlyPayment,
+      ...updates
+    } = args;
     const property = await ctx.db.get(id);
     if (!property) {
       throw new Error("Property not found");
     }
 
-    await ctx.db.patch(id, {
+    const patch: Record<string, any> = {
       ...updates,
       updatedAt: Date.now(),
+    };
+
+    if (clearMortgageLoanBalance) {
+      patch.mortgageLoanBalance = undefined;
+    }
+    if (clearMortgageAPR) {
+      patch.mortgageAPR = undefined;
+    }
+    if (clearMortgageMonthlyPayment) {
+      patch.mortgageMonthlyPayment = undefined;
+    }
+
+    await ctx.db.patch(id, {
+      ...patch,
     });
 
     const updated = await ctx.db.get(id);
@@ -197,6 +238,9 @@ export const update = mutation({
       monthlyRent: updated!.monthlyRent,
       purchasePrice: updated!.purchasePrice,
       currentValue: updated!.currentValue,
+      mortgageLoanBalance: updated!.mortgageLoanBalance,
+      mortgageAPR: updated!.mortgageAPR,
+      mortgageMonthlyPayment: updated!.mortgageMonthlyPayment,
       imageURL: updated!.imageURL,
       notes: updated!.notes,
       createdAt: updated!.createdAt,

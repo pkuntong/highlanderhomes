@@ -71,6 +71,7 @@ struct HighlanderHomesApp: App {
                 .environmentObject(convexAuth)
                 .environmentObject(dataService)
                 .preferredColorScheme(appAppearance.colorScheme)
+                .animation(.easeInOut(duration: 0.2), value: appAppearanceRaw)
                 .onAppear {
                     // Configure DataService with model context for local caching
                     dataService.configure(with: sharedModelContainer.mainContext)
@@ -174,6 +175,7 @@ class AppState: ObservableObject {
     @Published var isModalPresented: Bool = false
     @Published var showingSettings: Bool = false
     @Published var notificationBadgeCount: Int = 0
+    @Published var propertiesTabResetTrigger: Int = 0
 
     enum Tab: Int, CaseIterable {
         case dashboard

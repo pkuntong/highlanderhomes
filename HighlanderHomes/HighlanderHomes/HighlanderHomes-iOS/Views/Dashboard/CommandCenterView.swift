@@ -143,6 +143,7 @@ struct PortfolioHealthCard: View {
     let propertiesCount: Int
     let occupancyRate: Double
     let pendingMaintenance: Int
+    var summary: String? = nil
     @State private var animatedScore: Int = 0
     @State private var ringProgress: Double = 0
 
@@ -196,6 +197,13 @@ struct PortfolioHealthCard: View {
                 }
 
                 Spacer()
+            }
+
+            if let summary, !summary.isEmpty {
+                Text(summary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.Colors.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(Theme.Spacing.lg)

@@ -32,10 +32,12 @@ class ConvexDataService: ObservableObject {
     }
 
     var occupancyRate: Double {
-        // Calculate based on tenants assigned to properties
-        let propertiesWithTenants = Set(tenants.filter { $0.isActive }.map { $0.propertyId })
-        guard !properties.isEmpty else { return 0 }
-        return Double(propertiesWithTenants.count) / Double(properties.count)
+        let totalUnits = properties.reduce(0) { partial, property in
+            partial + max(1, property.units)
+        }
+        guard totalUnits > 0 else { return 0 }
+        let occupiedUnits = min(totalUnits, tenants.filter { $0.isActive }.count)
+        return Double(occupiedUnits) / Double(totalUnits)
     }
 
     var pendingMaintenanceCount: Int {
@@ -43,26 +45,49 @@ class ConvexDataService: ObservableObject {
     }
 
     var urgentMaintenanceCount: Int {
-        maintenanceRequests.filter { $0.priority == "high" && $0.status != "completed" }.count
+        maintenanceRequests.filter {
+            ["high", "urgent", "emergency"].contains($0.priority) &&
+            $0.status != "completed" &&
+            $0.status != "cancelled"
+        }.count
+    }
+
+    var expiredLeaseCount: Int {
+        let now = Date()
+        return tenants.filter { $0.isActive && $0.leaseEndDateValue < now }.count
+    }
+
+    var expiringLeaseCount: Int {
+        let now = Date()
+        guard let windowEnd = Calendar.current.date(byAdding: .day, value: 45, to: now) else { return 0 }
+        return tenants.filter {
+            $0.isActive && $0.leaseEndDateValue >= now && $0.leaseEndDateValue <= windowEnd
+        }.count
     }
 
     var portfolioHealthScore: Int {
         if properties.isEmpty && maintenanceRequests.isEmpty {
             return 0
         }
-        var score = 100
 
-        // Deduct for pending maintenance
-        score -= pendingMaintenanceCount * 5
+        let activeMaintenance = maintenanceRequests.filter {
+            $0.status != "completed" && $0.status != "cancelled"
+        }.count
 
-        // Deduct for vacancy
-        let vacancyRate = 1 - occupancyRate
-        score -= Int(vacancyRate * 30)
+        let vacancyPenalty = min(35, Int((1 - occupancyRate) * 40))
+        let maintenancePenalty = min(28, activeMaintenance * 4)
+        let urgentPenalty = min(24, urgentMaintenanceCount * 6)
+        let leasePenalty = min(18, expiredLeaseCount * 5 + expiringLeaseCount * 2)
 
-        // Deduct for urgent issues
-        score -= urgentMaintenanceCount * 10
-
+        let score = 100 - vacancyPenalty - maintenancePenalty - urgentPenalty - leasePenalty
         return max(0, min(100, score))
+    }
+
+    var portfolioHealthSummary: String {
+        let activeIssues = pendingMaintenanceCount
+        let urgentIssues = urgentMaintenanceCount
+        let expiringLeases = expiringLeaseCount + expiredLeaseCount
+        return "Based on occupancy, \(activeIssues) active issues (\(urgentIssues) urgent), and \(expiringLeases) lease risks."
     }
 
     private let client = ConvexClient.shared
@@ -100,6 +125,9 @@ class ConvexDataService: ObservableObject {
                 monthlyRent: convexProperty.monthlyRent,
                 purchasePrice: convexProperty.purchasePrice,
                 currentValue: convexProperty.currentValue,
+                mortgageLoanBalance: convexProperty.mortgageLoanBalance,
+                mortgageAPR: convexProperty.mortgageAPR,
+                mortgageMonthlyPayment: convexProperty.mortgageMonthlyPayment,
                 imageURL: convexProperty.imageURL
             )
 
@@ -821,6 +849,9 @@ struct ConvexProperty: Codable, Identifiable, Hashable {
     var monthlyRent: Double
     var purchasePrice: Double?
     var currentValue: Double?
+    var mortgageLoanBalance: Double? = nil
+    var mortgageAPR: Double? = nil
+    var mortgageMonthlyPayment: Double? = nil
     var imageURL: String?
     var notes: String?
     var createdAt: Double // Unix timestamp in ms
@@ -829,7 +860,7 @@ struct ConvexProperty: Codable, Identifiable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id = "_id"
         case name, address, city, state, zipCode, propertyType, units
-        case monthlyRent, purchasePrice, currentValue, imageURL, notes
+        case monthlyRent, purchasePrice, currentValue, mortgageLoanBalance, mortgageAPR, mortgageMonthlyPayment, imageURL, notes
         case createdAt, updatedAt
     }
 
@@ -857,6 +888,9 @@ struct ConvexPropertyInput {
     var monthlyRent: Double
     var purchasePrice: Double?
     var currentValue: Double?
+    var mortgageLoanBalance: Double? = nil
+    var mortgageAPR: Double? = nil
+    var mortgageMonthlyPayment: Double? = nil
     var imageURL: String?
     var notes: String?
 
@@ -873,6 +907,9 @@ struct ConvexPropertyInput {
         ]
         if let price = purchasePrice { dict["purchasePrice"] = price }
         if let value = currentValue { dict["currentValue"] = value }
+        if let mortgageLoanBalance { dict["mortgageLoanBalance"] = mortgageLoanBalance }
+        if let mortgageAPR { dict["mortgageAPR"] = mortgageAPR }
+        if let mortgageMonthlyPayment { dict["mortgageMonthlyPayment"] = mortgageMonthlyPayment }
         if let url = imageURL { dict["imageURL"] = url }
         if let notes = notes { dict["notes"] = notes }
         return dict

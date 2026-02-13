@@ -135,6 +135,9 @@ struct PropertyDetailView: View {
                     PropertyFinancialsSection(
                         income: monthlyIncome,
                         expenses: monthlyExpenses,
+                        mortgageBalance: currentProperty.mortgageLoanBalance,
+                        mortgageAPR: currentProperty.mortgageAPR,
+                        mortgageMonthlyPayment: currentProperty.mortgageMonthlyPayment,
                         payments: rentPayments,
                         expenseItems: expenses
                     )
@@ -165,6 +168,8 @@ struct PropertyDetailView: View {
         }
         .navigationTitle(currentProperty.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(Theme.Colors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .refreshable {
             await dataService.loadAllData()
         }
@@ -507,6 +512,9 @@ struct EditPropertySheet: View {
     @State private var propertyType: String
     @State private var units: String
     @State private var monthlyRent: String
+    @State private var mortgageLoanBalance: String
+    @State private var mortgageAPR: String
+    @State private var mortgageMonthlyPayment: String
     @State private var notes: String
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -523,6 +531,9 @@ struct EditPropertySheet: View {
         _propertyType = State(initialValue: property.propertyType)
         _units = State(initialValue: String(property.units))
         _monthlyRent = State(initialValue: String(format: "%.0f", property.monthlyRent))
+        _mortgageLoanBalance = State(initialValue: property.mortgageLoanBalance.map { String(format: "%.0f", $0) } ?? "")
+        _mortgageAPR = State(initialValue: property.mortgageAPR.map { String(format: "%.3f", $0) } ?? "")
+        _mortgageMonthlyPayment = State(initialValue: property.mortgageMonthlyPayment.map { String(format: "%.0f", $0) } ?? "")
         _notes = State(initialValue: property.notes ?? "")
     }
 
@@ -552,6 +563,9 @@ struct EditPropertySheet: View {
                             FormField(label: "Units", text: $units, placeholder: "1", keyboard: .numberPad)
                         }
                         FormField(label: "Monthly Rent", text: $monthlyRent, placeholder: "0", keyboard: .decimalPad)
+                        FormField(label: "Mortgage Loan Balance", text: $mortgageLoanBalance, placeholder: "Optional", keyboard: .decimalPad)
+                        FormField(label: "Mortgage APR (%)", text: $mortgageAPR, placeholder: "Optional", keyboard: .decimalPad)
+                        FormField(label: "Monthly Mortgage Payment", text: $mortgageMonthlyPayment, placeholder: "Optional", keyboard: .decimalPad)
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Type")
@@ -619,8 +633,11 @@ struct EditPropertySheet: View {
         do {
             let parsedUnits = max(1, Int(units.filter { "0123456789".contains($0) }) ?? property.units)
             let parsedRent = Double(monthlyRent.filter { "0123456789.-".contains($0) }) ?? property.monthlyRent
+            let parsedMortgageBalance = parseOptionalDecimal(mortgageLoanBalance)
+            let parsedMortgageAPR = parseOptionalDecimal(mortgageAPR)
+            let parsedMortgageMonthlyPayment = parseOptionalDecimal(mortgageMonthlyPayment)
 
-            let updates: [String: Any] = [
+            var updates: [String: Any] = [
                 "name": name.trimmingCharacters(in: .whitespacesAndNewlines),
                 "address": address.trimmingCharacters(in: .whitespacesAndNewlines),
                 "city": city.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -631,6 +648,21 @@ struct EditPropertySheet: View {
                 "monthlyRent": parsedRent,
                 "notes": notes.trimmedNil ?? ""
             ]
+            if let parsedMortgageBalance {
+                updates["mortgageLoanBalance"] = parsedMortgageBalance
+            } else {
+                updates["clearMortgageLoanBalance"] = true
+            }
+            if let parsedMortgageAPR {
+                updates["mortgageAPR"] = parsedMortgageAPR
+            } else {
+                updates["clearMortgageAPR"] = true
+            }
+            if let parsedMortgageMonthlyPayment {
+                updates["mortgageMonthlyPayment"] = parsedMortgageMonthlyPayment
+            } else {
+                updates["clearMortgageMonthlyPayment"] = true
+            }
 
             _ = try await dataService.updateProperty(id: property.id, updates: updates)
             await dataService.loadAllData()
@@ -640,6 +672,12 @@ struct EditPropertySheet: View {
             errorMessage = error.localizedDescription
             HapticManager.shared.error()
         }
+    }
+
+    private func parseOptionalDecimal(_ raw: String) -> Double? {
+        let cleaned = raw.filter { "0123456789.-".contains($0) }
+        guard !cleaned.isEmpty else { return nil }
+        return Double(cleaned)
     }
 }
 
@@ -877,10 +915,16 @@ struct MaintenanceRow: View {
 struct PropertyFinancialsSection: View {
     let income: Double
     let expenses: Double
+    let mortgageBalance: Double?
+    let mortgageAPR: Double?
+    let mortgageMonthlyPayment: Double?
     let payments: [ConvexRentPayment]
     let expenseItems: [ConvexExpense]
 
     private var noi: Double { income - expenses }
+    private var cashFlowAfterMortgage: Double {
+        noi - (mortgageMonthlyPayment ?? 0)
+    }
 
     var body: some View {
         CollapsibleSection(
@@ -893,6 +937,37 @@ struct PropertyFinancialsSection: View {
                 FinancialRow(label: "Monthly Expenses", amount: -expenses, color: Theme.Colors.alertRed)
                 Divider().background(Theme.Colors.slate700)
                 FinancialRow(label: "Net Operating Income", amount: noi, color: noi >= 0 ? Theme.Colors.emerald : Theme.Colors.alertRed, isBold: true)
+                if let mortgageMonthlyPayment {
+                    FinancialRow(label: "Monthly Mortgage Payment", amount: -mortgageMonthlyPayment, color: Theme.Colors.warningAmber)
+                    FinancialRow(
+                        label: "Cash Flow After Mortgage",
+                        amount: cashFlowAfterMortgage,
+                        color: cashFlowAfterMortgage >= 0 ? Theme.Colors.emerald : Theme.Colors.alertRed,
+                        isBold: true
+                    )
+                }
+                if let mortgageBalance {
+                    Divider().background(Theme.Colors.slate700.opacity(0.8))
+                    FinancialRow(label: "Mortgage Loan Balance", amount: -mortgageBalance, color: Theme.Colors.warningAmber)
+                }
+                if let mortgageAPR {
+                    HStack {
+                        Text("Mortgage APR")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Theme.Colors.textSecondary)
+                        Spacer()
+                        Text(String(format: "%.3f%%", mortgageAPR))
+                            .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                            .foregroundColor(Theme.Colors.infoBlue)
+                    }
+                }
+                if mortgageBalance == nil && mortgageAPR == nil && mortgageMonthlyPayment == nil {
+                    Text("Add mortgage balance, APR, and monthly payment from Edit Property to track loan health.")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Theme.Colors.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 2)
+                }
             }
         }
     }

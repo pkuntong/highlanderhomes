@@ -30,6 +30,9 @@ export default defineSchema({
     monthlyRent: v.number(),
     purchasePrice: v.optional(v.number()),
     currentValue: v.optional(v.number()),
+    mortgageLoanBalance: v.optional(v.number()),
+    mortgageAPR: v.optional(v.number()),
+    mortgageMonthlyPayment: v.optional(v.number()),
     imageURL: v.optional(v.string()),
     notes: v.optional(v.string()),
     userId: v.id("users"), // Owner of the property

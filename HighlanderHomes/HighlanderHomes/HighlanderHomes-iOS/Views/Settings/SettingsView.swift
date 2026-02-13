@@ -75,6 +75,8 @@ struct SettingsView: View {
                 }
             }
         }
+        .preferredColorScheme((AppAppearance(rawValue: appAppearanceRaw) ?? .light).colorScheme)
+        .animation(.easeInOut(duration: 0.2), value: appAppearanceRaw)
         .onAppear {
             if let user = convexAuth.currentUser {
                 editedName = user.name

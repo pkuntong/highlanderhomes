@@ -32,7 +32,8 @@ struct DashboardView: View {
                             score: dataService.portfolioHealthScore,
                             propertiesCount: dataService.properties.count,
                             occupancyRate: dataService.occupancyRate,
-                            pendingMaintenance: dataService.pendingMaintenanceCount
+                            pendingMaintenance: dataService.pendingMaintenanceCount,
+                            summary: dataService.portfolioHealthSummary
                         )
 
                         // Key Metrics
@@ -44,6 +45,12 @@ struct DashboardView: View {
                             onTapOccupancy: { appState.selectedTab = .properties },
                             onTapPending: { appState.selectedTab = .maintenance }
                         )
+
+                        MortgagePortfolioCard(
+                            properties: dataService.properties
+                        ) {
+                            appState.selectedTab = .properties
+                        }
 
                         // Quick Actions
                         QuickActionsRow()
@@ -195,6 +202,152 @@ struct DashboardRefreshBanner: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .accessibilityLabel("Refreshing data")
+    }
+}
+
+struct MortgagePortfolioCard: View {
+    let properties: [ConvexProperty]
+    var onTapManage: () -> Void
+    @State private var showingAllRows = false
+    private let collapsedLimit = 4
+
+    private var mortgageProperties: [ConvexProperty] {
+        properties
+            .filter { $0.mortgageLoanBalance != nil || $0.mortgageAPR != nil || $0.mortgageMonthlyPayment != nil }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var visibleMortgageProperties: [ConvexProperty] {
+        if showingAllRows || mortgageProperties.count <= collapsedLimit {
+            return mortgageProperties
+        }
+        return Array(mortgageProperties.prefix(collapsedLimit))
+    }
+
+    private var totalLoanBalance: Double {
+        mortgageProperties.reduce(0) { partial, property in
+            partial + (property.mortgageLoanBalance ?? 0)
+        }
+    }
+
+    private var totalMonthlyMortgagePayment: Double {
+        mortgageProperties.reduce(0) { partial, property in
+            partial + (property.mortgageMonthlyPayment ?? 0)
+        }
+    }
+
+    private var weightedAPR: Double? {
+        let weightedEntries = mortgageProperties.compactMap { property -> (balance: Double, apr: Double)? in
+            guard let balance = property.mortgageLoanBalance, balance > 0, let apr = property.mortgageAPR else { return nil }
+            return (balance, apr)
+        }
+        let weightedBalance = weightedEntries.reduce(0) { $0 + $1.balance }
+        if weightedBalance > 0 {
+            let weightedSum = weightedEntries.reduce(0) { $0 + ($1.balance * $1.apr) }
+            return weightedSum / weightedBalance
+        }
+
+        let plainAPR = mortgageProperties.compactMap(\.mortgageAPR)
+        guard !plainAPR.isEmpty else { return nil }
+        return plainAPR.reduce(0, +) / Double(plainAPR.count)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack {
+                Text("Mortgage Tracking")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Theme.Colors.textPrimary)
+                Spacer()
+                Button("Manage") {
+                    HapticManager.shared.impact(.light)
+                    onTapManage()
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Theme.Colors.infoBlue)
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: Theme.Spacing.md) {
+                StatPill(
+                    value: "$\(Int(totalLoanBalance).formatted())",
+                    label: "Loan Balance",
+                    color: Theme.Colors.warningAmber
+                )
+                StatPill(
+                    value: weightedAPR.map { String(format: "%.2f%%", $0) } ?? "--",
+                    label: "Portfolio APR",
+                    color: Theme.Colors.infoBlue
+                )
+            }
+
+            StatPill(
+                value: "$\(Int(totalMonthlyMortgagePayment).formatted())",
+                label: "Monthly Payment",
+                color: Theme.Colors.gold
+            )
+
+            if mortgageProperties.isEmpty {
+                Text("No mortgage data yet. Add balance, APR, and monthly payment under each property.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Theme.Colors.textMuted)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(visibleMortgageProperties) { property in
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(property.name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(Theme.Colors.textPrimary)
+                                    .lineLimit(1)
+                                Text(property.address)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Theme.Colors.textMuted)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("$\(Int(property.mortgageLoanBalance ?? 0).formatted())")
+                                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(Theme.Colors.warningAmber)
+                                if let apr = property.mortgageAPR {
+                                    Text(String(format: "%.2f%% APR", apr))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Theme.Colors.infoBlue)
+                                } else {
+                                    Text("APR --")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Theme.Colors.textMuted)
+                                }
+                                if let payment = property.mortgageMonthlyPayment {
+                                    Text("$\(Int(payment).formatted()) / mo")
+                                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                        .foregroundColor(Theme.Colors.gold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if mortgageProperties.count > collapsedLimit {
+                    Button {
+                        HapticManager.shared.selection()
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                            showingAllRows.toggle()
+                        }
+                    } label: {
+                        Text(showingAllRows ? "Show Less" : "Show \(mortgageProperties.count - collapsedLimit) More")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Theme.Colors.infoBlue)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 4)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(Theme.Spacing.lg)
+        .cardStyle()
     }
 }
 

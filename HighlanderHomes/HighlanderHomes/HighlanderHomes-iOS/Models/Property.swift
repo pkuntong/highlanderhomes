@@ -18,6 +18,9 @@ final class Property {
     var monthlyRent: Double
     var purchasePrice: Double?
     var currentValue: Double?
+    var mortgageLoanBalance: Double?
+    var mortgageAPR: Double?
+    var mortgageMonthlyPayment: Double?
     var imageURL: String?
     var notes: String?
     var status: String // "occupied", "vacant", "maintenance"
@@ -104,6 +107,9 @@ final class Property {
         monthlyRent: Double = 0,
         purchasePrice: Double? = nil,
         currentValue: Double? = nil,
+        mortgageLoanBalance: Double? = nil,
+        mortgageAPR: Double? = nil,
+        mortgageMonthlyPayment: Double? = nil,
         imageURL: String? = nil,
         notes: String? = nil,
         status: String = "vacant",
@@ -124,6 +130,9 @@ final class Property {
         self.monthlyRent = monthlyRent
         self.purchasePrice = purchasePrice
         self.currentValue = currentValue
+        self.mortgageLoanBalance = mortgageLoanBalance
+        self.mortgageAPR = mortgageAPR
+        self.mortgageMonthlyPayment = mortgageMonthlyPayment
         self.imageURL = imageURL
         self.notes = notes
         self.status = status

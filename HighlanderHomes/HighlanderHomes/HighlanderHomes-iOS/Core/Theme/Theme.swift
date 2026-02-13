@@ -50,13 +50,13 @@ enum Theme {
         static let infoBlueMuted = Color(hex: "1E3A8A")
 
         // Gold for payments
-        static let gold = Color(hex: "FFD700")
-        static let goldMuted = Color(hex: "A16207")
+        static var gold: Color { dynamicColor(lightHex: "B45309", darkHex: "F59E0B") }
+        static var goldMuted: Color { dynamicColor(lightHex: "92400E", darkHex: "A16207") }
 
         // Text
-        static var textPrimary: Color { slate50 }
-        static var textSecondary: Color { slate400 }
-        static var textMuted: Color { slate500 }
+        static var textPrimary: Color { dynamicColor(lightHex: "0F172A", darkHex: "F1F5F9") }
+        static var textSecondary: Color { dynamicColor(lightHex: "475569", darkHex: "CBD5E1") }
+        static var textMuted: Color { dynamicColor(lightHex: "64748B", darkHex: "94A3B8") }
     }
 
     // MARK: - Gradients
@@ -79,17 +79,21 @@ enum Theme {
             endPoint: .bottomTrailing
         )
 
-        static let surfaceGradient = LinearGradient(
-            colors: [Colors.slate800, Colors.slate900],
-            startPoint: .top,
-            endPoint: .bottom
-        )
+        static var surfaceGradient: LinearGradient {
+            LinearGradient(
+                colors: [Colors.slate800, Colors.slate900],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
 
-        static let cardGradient = LinearGradient(
-            colors: [Colors.slate800.opacity(0.8), Colors.slate900.opacity(0.6)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        static var cardGradient: LinearGradient {
+            LinearGradient(
+                colors: [Colors.slate800.opacity(0.8), Colors.slate900.opacity(0.6)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
     }
 
     // MARK: - Typography
