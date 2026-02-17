@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "audit:public": "bash scripts/public_repo_audit.sh",
     "preview": "vite preview",
     "deploy": "vercel --prod && vercel domains add <your-project-name> yourdomain.com",
     "convex:dev": "convex dev",
