@@ -11,6 +11,7 @@ struct PricingView: View {
 
     private let freeLimit = 3
     private let ownerEmail = "highlanderhomes22@gmail.com"
+    private let eulaURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
     private let termsURL = URL(string: "https://www.highlanderhomes.org/terms")!
     private let privacyURL = URL(string: "https://www.highlanderhomes.org/privacy")!
 
@@ -98,6 +99,18 @@ struct PricingView: View {
                             }
 
                             VStack(spacing: 8) {
+                                VStack(spacing: 4) {
+                                    Text("Subscription: Highlander Homes Pro Monthly")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Theme.Colors.textSecondary)
+                                    Text("Length: 1 month (auto-renewing)")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Theme.Colors.textMuted)
+                                    Text("Price: \((subscriptions.product?.displayPrice ?? "$9.99"))/month")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Theme.Colors.textMuted)
+                                }
+
                                 Text("Payment will be charged to your Apple ID account. Subscription renews automatically unless canceled at least 24 hours before the end of the current period.")
                                     .font(.system(size: 11))
                                     .foregroundColor(Theme.Colors.textMuted)
@@ -108,6 +121,9 @@ struct PricingView: View {
                                     Text("•")
                                         .foregroundColor(Theme.Colors.textMuted)
                                     Link("Privacy", destination: privacyURL)
+                                    Text("•")
+                                        .foregroundColor(Theme.Colors.textMuted)
+                                    Link("EULA", destination: eulaURL)
                                 }
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(Theme.Colors.emerald)
