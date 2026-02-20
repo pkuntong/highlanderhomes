@@ -10,7 +10,7 @@ A comprehensive property management platform for landlords and property managers
 - RentCast market intelligence
 - Document management
 - Maintenance request tracking
-- Mobile-responsive PWA
+- Mobile-responsive web app
 - Dark mode support
 
 ## Getting Started
@@ -39,10 +39,9 @@ npm run dev
 
 - **Frontend:** React 18 + Vite
 - **UI Framework:** Tailwind CSS + shadcn/ui
-- **Database:** Firebase Firestore
-- **Authentication:** Firebase Auth
+- **Backend + Database:** Convex
+- **Authentication:** Convex auth actions
 - **Market Data:** RentCast API
-- **PWA:** Workbox service worker
 
 ## Project Structure
 
@@ -52,10 +51,9 @@ highlanderhomes/
 │   ├── components/     # Reusable UI components
 │   ├── pages/         # Page components
 │   ├── services/      # API services
-│   ├── contexts/      # React contexts
-│   └── firebase.js    # Firebase configuration
-├── docs/              # Documentation
-└── functions/         # Firebase Cloud Functions
+│   └── contexts/      # React contexts
+├── convex/            # Convex functions and schema
+└── docs/              # Documentation
 ```
 
 ## Documentation
@@ -68,4 +66,3 @@ highlanderhomes/
 
 - Email: highlanderhomes22@gmail.com
 - Phone: 240-449-4338
-

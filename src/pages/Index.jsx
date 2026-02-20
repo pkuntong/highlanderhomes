@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Building, Home, Users, Calendar, Wrench, BarChart3, FileText } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
+const IOS_APP_URL = "https://apps.apple.com/us/app/highlander-homes/id6758958500";
+
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-highlander-50 to-white dark:from-gray-900 dark:to-gray-800 dark:text-white">
@@ -36,6 +38,15 @@ const Index = () => {
                 Contact Us
               </a>
             </Button>
+          </div>
+          <div className="mt-6 flex items-center justify-center">
+            <a href={IOS_APP_URL} target="_blank" rel="noreferrer" aria-label="Download Highlander Homes on the App Store">
+              <img
+                src="/AppIcons/appstore.png"
+                alt="Download on the App Store"
+                className="h-14 w-auto"
+              />
+            </a>
           </div>
         </div>
       </section>

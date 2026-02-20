@@ -121,8 +121,8 @@ export async function redirectToCheckout(priceId, userEmail, userId) {
   try {
     const stripe = await getStripe();
 
-    // Call Cloud Function to create checkout session
-    const functionUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL ||
+    // Call backend endpoint to create checkout session
+    const functionUrl = import.meta.env.VITE_PAYMENTS_FUNCTIONS_URL ||
       'https://us-central1-highlanderhomes-4b1f3.cloudfunctions.net';
 
     const response = await fetch(`${functionUrl}/createCheckoutSession`, {
@@ -157,7 +157,7 @@ export async function redirectToCheckout(priceId, userEmail, userId) {
  */
 export async function openCustomerPortal(customerId) {
   try {
-    const functionUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL ||
+    const functionUrl = import.meta.env.VITE_PAYMENTS_FUNCTIONS_URL ||
       'https://us-central1-highlanderhomes-4b1f3.cloudfunctions.net';
 
     const response = await fetch(`${functionUrl}/createPortalSession`, {

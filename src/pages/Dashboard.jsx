@@ -29,7 +29,7 @@ function StatCard({ title, value, hint, icon: Icon }) {
 
 export default function Dashboard() {
   const iosAppUrl =
-    import.meta.env.VITE_IOS_APP_URL || "https://www.highlanderhomes.org/";
+    import.meta.env.VITE_IOS_APP_URL || "https://apps.apple.com/us/app/highlander-homes/id6758958500";
 
   const { currentUser } = useAuth();
   const userId = currentUser?._id;

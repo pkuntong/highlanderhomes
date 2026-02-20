@@ -1,6 +1,6 @@
 import { ConvexHttpClient } from "convex/browser";
 
-const DEFAULT_CONVEX_URL = "https://successful-goldfinch-551.convex.cloud";
+const DEFAULT_CONVEX_URL = "https://acrobatic-nightingale-459.convex.cloud";
 const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || DEFAULT_CONVEX_URL;
 
 export const convex = new ConvexHttpClient(CONVEX_URL);

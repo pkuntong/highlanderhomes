@@ -20,7 +20,7 @@ export default function Pricing() {
     }
 
     if (tier.id === 'free') {
-      // Free tier - just update user's subscription in Firestore
+      // Free tier - update subscription status directly in Convex.
       alert('You are already on the free plan!');
       return;
     }

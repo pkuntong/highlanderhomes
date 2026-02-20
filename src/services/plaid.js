@@ -228,7 +228,7 @@ export async function handlePlaidSuccess(publicToken, metadata, userId, onSucces
   try {
     console.log('Plaid Link Success:', metadata);
 
-    // Exchange token and save to Firestore
+    // Exchange token and store it in the backend.
     const result = await exchangePublicToken(publicToken, userId);
 
     if (onSuccess) {
