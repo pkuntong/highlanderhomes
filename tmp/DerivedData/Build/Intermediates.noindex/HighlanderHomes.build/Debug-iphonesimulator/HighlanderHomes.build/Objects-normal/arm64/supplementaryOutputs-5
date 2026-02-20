@@ -1,0 +1,23 @@
+{
+  "/Users/gnotnuk/Documents/highlanderhomes/HighlanderHomes/HighlanderHomes/HighlanderHomes-iOS/Models/FeedEvent.swift" : {
+    "const-values" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/FeedEvent.swiftconstvalues",
+    "dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/FeedEvent.d",
+    "diagnostics" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/FeedEvent.dia",
+    "object" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/FeedEvent.o",
+    "swift-dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/FeedEvent.swiftdeps"
+  },
+  "/Users/gnotnuk/Documents/highlanderhomes/HighlanderHomes/HighlanderHomes/HighlanderHomes-iOS/Models/MaintenanceRequest.swift" : {
+    "const-values" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/MaintenanceRequest.swiftconstvalues",
+    "dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/MaintenanceRequest.d",
+    "diagnostics" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/MaintenanceRequest.dia",
+    "object" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/MaintenanceRequest.o",
+    "swift-dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/MaintenanceRequest.swiftdeps"
+  },
+  "/Users/gnotnuk/Documents/highlanderhomes/HighlanderHomes/HighlanderHomes/HighlanderHomes-iOS/Models/Property.swift" : {
+    "const-values" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/Property.swiftconstvalues",
+    "dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/Property.d",
+    "diagnostics" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/Property.dia",
+    "object" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/Property.o",
+    "swift-dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/Property.swiftdeps"
+  }
+}

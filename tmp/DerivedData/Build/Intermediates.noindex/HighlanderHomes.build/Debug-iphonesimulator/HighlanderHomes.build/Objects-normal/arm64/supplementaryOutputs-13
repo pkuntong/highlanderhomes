@@ -1,0 +1,23 @@
+{
+  "/Users/gnotnuk/Documents/highlanderhomes/HighlanderHomes/HighlanderHomes/HighlanderHomes-iOS/Services/RemoteSyncService.swift" : {
+    "const-values" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/RemoteSyncService.swiftconstvalues",
+    "dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/RemoteSyncService.d",
+    "diagnostics" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/RemoteSyncService.dia",
+    "object" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/RemoteSyncService.o",
+    "swift-dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/RemoteSyncService.swiftdeps"
+  },
+  "/Users/gnotnuk/Documents/highlanderhomes/HighlanderHomes/HighlanderHomes/HighlanderHomes-iOS/Services/SubscriptionManager.swift" : {
+    "const-values" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/SubscriptionManager.swiftconstvalues",
+    "dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/SubscriptionManager.d",
+    "diagnostics" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/SubscriptionManager.dia",
+    "object" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/SubscriptionManager.o",
+    "swift-dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/SubscriptionManager.swiftdeps"
+  },
+  "/Users/gnotnuk/Documents/highlanderhomes/HighlanderHomes/HighlanderHomes/HighlanderHomes-iOS/Views/Auth/AuthenticationView.swift" : {
+    "const-values" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/AuthenticationView.swiftconstvalues",
+    "dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/AuthenticationView.d",
+    "diagnostics" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/AuthenticationView.dia",
+    "object" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/AuthenticationView.o",
+    "swift-dependencies" : "/Users/gnotnuk/Documents/highlanderhomes/tmp/DerivedData/Build/Intermediates.noindex/HighlanderHomes.build/Debug-iphonesimulator/HighlanderHomes.build/Objects-normal/arm64/AuthenticationView.swiftdeps"
+  }
+}

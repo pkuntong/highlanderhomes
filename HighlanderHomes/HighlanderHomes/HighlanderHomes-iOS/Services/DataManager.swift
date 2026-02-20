@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import Combine
 
-/// Central data manager that syncs Firebase data to local SwiftData
+/// Central data manager that syncs remote data to local SwiftData
 /// Provides offline-first capability with real-time sync
 @MainActor
 class DataManager: ObservableObject {
@@ -93,25 +93,25 @@ class DataManager: ObservableObject {
         }
     }
 
-    // MARK: - Firebase Sync
-    func syncWithFirebase() async {
+    // MARK: - Remote Sync
+    func syncWithRemoteData() async {
         guard let context = modelContext else { return }
 
         isSyncing = true
         syncError = nil
 
         do {
-            // Fetch all data from Firebase
-            async let firebaseProperties = FirebaseService.shared.fetchProperties()
-            async let firebaseTenants = FirebaseService.shared.fetchTenants()
-            async let firebaseRequests = FirebaseService.shared.fetchMaintenanceRequests()
-            async let firebaseContractors = FirebaseService.shared.fetchContractors()
+            // Fetch all data from remote service
+            async let remoteProperties = RemoteSyncService.shared.fetchProperties()
+            async let remoteTenants = RemoteSyncService.shared.fetchTenants()
+            async let remoteRequests = RemoteSyncService.shared.fetchMaintenanceRequests()
+            async let remoteContractors = RemoteSyncService.shared.fetchContractors()
 
             let (props, tens, reqs, cons) = try await (
-                firebaseProperties,
-                firebaseTenants,
-                firebaseRequests,
-                firebaseContractors
+                remoteProperties,
+                remoteTenants,
+                remoteRequests,
+                remoteContractors
             )
 
             // Sync properties
@@ -149,8 +149,8 @@ class DataManager: ObservableObject {
     }
 
     // MARK: - Property Sync
-    private func syncProperties(_ firebaseProperties: [PropertyFirestore], context: ModelContext) async {
-        for fbProperty in firebaseProperties {
+    private func syncProperties(_ remoteProperties: [RemotePropertyRecord], context: ModelContext) async {
+        for fbProperty in remoteProperties {
             guard let fbId = fbProperty.id else { continue }
 
             // Check if property exists locally
@@ -183,8 +183,8 @@ class DataManager: ObservableObject {
     }
 
     // MARK: - Tenant Sync
-    private func syncTenants(_ firebaseTenants: [TenantFirestore], context: ModelContext) async {
-        for fbTenant in firebaseTenants {
+    private func syncTenants(_ remoteTenants: [RemoteTenantRecord], context: ModelContext) async {
+        for fbTenant in remoteTenants {
             guard let fbId = fbTenant.id else { continue }
 
             let existingTenant = tenants.first { $0.id.uuidString == fbId }
@@ -216,8 +216,8 @@ class DataManager: ObservableObject {
     }
 
     // MARK: - Maintenance Sync
-    private func syncMaintenanceRequests(_ firebaseRequests: [MaintenanceRequestFirestore], context: ModelContext) async {
-        for fbRequest in firebaseRequests {
+    private func syncMaintenanceRequests(_ remoteRequests: [RemoteMaintenanceRequestRecord], context: ModelContext) async {
+        for fbRequest in remoteRequests {
             guard let fbId = fbRequest.id else { continue }
 
             let existingRequest = maintenanceRequests.first { $0.id.uuidString == fbId }
@@ -245,8 +245,8 @@ class DataManager: ObservableObject {
     }
 
     // MARK: - Contractor Sync
-    private func syncContractors(_ firebaseContractors: [ContractorFirestore], context: ModelContext) async {
-        for fbContractor in firebaseContractors {
+    private func syncContractors(_ remoteContractors: [RemoteContractorRecord], context: ModelContext) async {
+        for fbContractor in remoteContractors {
             guard let fbId = fbContractor.id else { continue }
 
             let existingContractor = contractors.first { $0.id.uuidString == fbId }
@@ -343,9 +343,9 @@ class DataManager: ObservableObject {
         try? context.save()
         loadLocalData()
 
-        // Sync to Firebase
+        // Sync to remote service
         Task {
-            let fbProperty = PropertyFirestore(
+            let fbProperty = RemotePropertyRecord(
                 address: property.address,
                 city: property.city,
                 state: property.state,
@@ -353,7 +353,7 @@ class DataManager: ObservableObject {
                 monthlyRent: property.monthlyRent,
                 status: "vacant"
             )
-            try? await FirebaseService.shared.saveProperty(fbProperty)
+            try? await RemoteSyncService.shared.saveProperty(fbProperty)
         }
     }
 
@@ -393,10 +393,10 @@ class DataManager: ObservableObject {
         try? modelContext?.save()
         loadLocalData()
 
-        // Sync to Firebase
+        // Sync to remote service
         Task {
             if let id = request.id.uuidString as String? {
-                try? await FirebaseService.shared.updateMaintenanceStatus(id: id, status: status.rawValue)
+                try? await RemoteSyncService.shared.updateMaintenanceStatus(id: id, status: status.rawValue)
             }
         }
     }

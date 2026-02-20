@@ -1,26 +1,26 @@
 import Foundation
 
-/// Lightweight stub to satisfy legacy Firebase references.
+/// Lightweight stub to satisfy legacy remote sync references.
 /// The iOS build currently uses Convex for data, so these
 /// implementations are no-ops that return empty data sets.
-actor FirebaseService {
-    static let shared = FirebaseService()
+actor RemoteSyncService {
+    static let shared = RemoteSyncService()
 
     private init() {}
 
     // MARK: - Fetch
-    func fetchProperties() async throws -> [PropertyFirestore] { [] }
-    func fetchTenants() async throws -> [TenantFirestore] { [] }
-    func fetchMaintenanceRequests() async throws -> [MaintenanceRequestFirestore] { [] }
-    func fetchContractors() async throws -> [ContractorFirestore] { [] }
+    func fetchProperties() async throws -> [RemotePropertyRecord] { [] }
+    func fetchTenants() async throws -> [RemoteTenantRecord] { [] }
+    func fetchMaintenanceRequests() async throws -> [RemoteMaintenanceRequestRecord] { [] }
+    func fetchContractors() async throws -> [RemoteContractorRecord] { [] }
 
     // MARK: - Mutations
-    func saveProperty(_ property: PropertyFirestore) async throws {}
+    func saveProperty(_ property: RemotePropertyRecord) async throws {}
     func updateMaintenanceStatus(id: String, status: String) async throws {}
 }
 
-// MARK: - Minimal Firestore DTOs used by the legacy DataManager
-struct PropertyFirestore: Codable {
+// MARK: - Minimal remote DTOs used by the legacy DataManager
+struct RemotePropertyRecord: Codable {
     var id: String?
     var address: String?
     var city: String?
@@ -31,7 +31,7 @@ struct PropertyFirestore: Codable {
     var status: String?
 }
 
-struct TenantFirestore: Codable {
+struct RemoteTenantRecord: Codable {
     var id: String?
     var name: String
     var email: String
@@ -42,7 +42,7 @@ struct TenantFirestore: Codable {
     var propertyId: String?
 }
 
-struct MaintenanceRequestFirestore: Codable {
+struct RemoteMaintenanceRequestRecord: Codable {
     var id: String?
     var title: String
     var description: String?
@@ -52,7 +52,7 @@ struct MaintenanceRequestFirestore: Codable {
     var propertyId: String?
 }
 
-struct ContractorFirestore: Codable {
+struct RemoteContractorRecord: Codable {
     var id: String?
     var company: String?
     var name: String

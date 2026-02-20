@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Building2, DollarSign, FileText, Home, Smartphone, UserCircle2, Wrench } from "lucide-react";
+import { AlertTriangle, Building2, DollarSign, FileText, Home, UserCircle2, Wrench } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchDashboardSnapshot } from "@/services/dataService";
 import { formatCurrency, formatDate } from "@/lib/format";
+import AppStoreBadge from "@/components/common/AppStoreBadge";
 
 function StatCard({ title, value, hint, icon: Icon }) {
   return (
@@ -167,12 +167,7 @@ export default function Dashboard() {
                 Download the iOS app for full mobile workflows and offline-friendly operation.
               </p>
             </div>
-            <Button asChild className="gap-2">
-              <a href={iosAppUrl} target="_blank" rel="noreferrer">
-                <Smartphone className="h-4 w-4" />
-                Get iOS App
-              </a>
-            </Button>
+            <AppStoreBadge href={iosAppUrl} className="w-fit" />
           </CardContent>
         </Card>
 

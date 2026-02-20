@@ -10,7 +10,6 @@ import {
   X,
   Handshake,
   FileText,
-  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,7 +25,7 @@ const navItems = [
 ];
 
 const IOS_APP_URL =
-  import.meta.env.VITE_IOS_APP_URL || "https://www.highlanderhomes.org/";
+  import.meta.env.VITE_IOS_APP_URL || "https://apps.apple.com/us/app/highlander-homes/id6758958500";
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
@@ -98,10 +97,10 @@ export default function Sidebar() {
               href={IOS_APP_URL}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-foreground hover:bg-muted"
+              className="inline-flex items-center gap-2 rounded-md bg-black px-3 py-1.5 text-white hover:bg-black/90"
             >
-              <Smartphone className="h-3 w-3" />
-              Download iOS App
+              <span aria-hidden></span>
+              App Store
             </a>
           </div>
         </div>
